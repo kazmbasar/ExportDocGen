@@ -1,0 +1,37 @@
+# .NET
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+*.user
+*.suo
+*.userprefs
+project.lock.json
+artifacts/
+
+# Rider / VS
+.idea/
+.vs/
+*.DotSettings.user
+
+# Build / publish output
+publish/
+*.dll
+*.pdb
+
+# Local database & app data
+*.db
+*.db-shm
+*.db-wal
+exportdocgen.db
+
+# Environment / secrets
+appsettings.Development.json
+appsettings.Local.json
+.env
+
+# OS
+.DS_Store
+Thumbs.db

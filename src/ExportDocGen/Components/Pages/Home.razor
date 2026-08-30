@@ -1,0 +1,50 @@
+@page "/"
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+<PageTitle>ExportDocGen</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">ExportDocGen</MudText>
+<MudText Typo="Typo.body1" Class="mb-6">
+    Generate proforma invoices and packing lists for filter export orders.
+</MudText>
+
+<MudGrid>
+    <MudItem xs="12" sm="4">
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.overline">Customers</MudText>
+            <MudText Typo="Typo.h5">@(_counts?.Customers.ToString() ?? "…")</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.overline">Products</MudText>
+            <MudText Typo="Typo.h5">@(_counts?.Products.ToString() ?? "…")</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.overline">Orders</MudText>
+            <MudText Typo="Typo.h5">@(_counts?.Orders.ToString() ?? "…")</MudText>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<MudAlert Severity="Severity.Info" Class="mt-6" Dense="true">
+    Scaffold in place — database, seed data and UI shell are working. CRUD screens
+    come next (milestone M2).
+</MudAlert>
+
+@code {
+    private Counts? _counts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _counts = new Counts(
+            await db.Customers.CountAsync(),
+            await db.Products.CountAsync(),
+            await db.Orders.CountAsync());
+    }
+
+    private record Counts(int Customers, int Products, int Orders);
+}
