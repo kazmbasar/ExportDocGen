@@ -1,5 +1,6 @@
 using ExportDocGen.Components;
 using ExportDocGen.Data;
+using ExportDocGen.Services;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
 using QuestPDF.Infrastructure;
@@ -25,6 +26,9 @@ var dbPath = Path.Combine(dataDir, "exportdocgen.db");
 
 builder.Services.AddDbContextFactory<AppDbContext>(options =>
     options.UseSqlite($"Data Source={dbPath}"));
+
+builder.Services.AddScoped<CustomerService>();
+builder.Services.AddScoped<ProductService>();
 
 // QuestPDF Community license (free for companies under the revenue threshold).
 QuestPDF.Settings.License = LicenseType.Community;

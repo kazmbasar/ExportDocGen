@@ -51,11 +51,12 @@ output.
 
 ## Milestone plan (~6 weeks, part-time)
 
-- [ ] **M1 — Setup.** Solution scaffolded, builds and runs. EF Core + SQLite
-      wired up, initial migration, DbContext registered. Seed a few sample
-      customers and products.
-- [ ] **M2 — Customer & product CRUD.** MudBlazor list + add/edit dialog screens
-      for both entities. Data persists across restarts.
+- [x] **M1 — Setup.** _(2026-08-31)_ Solution scaffolded, builds and runs. EF
+      Core + SQLite via DbContextFactory, InitialCreate migration, seed data,
+      MudBlazor shell, home dashboard.
+- [x] **M2 — Customer & product CRUD.** _(2026-08-31)_ MudDataGrid list screens +
+      MudDialog add/edit forms for both entities, with delete confirmation and
+      referential-integrity guards. `CustomerService` / `ProductService`.
 - [ ] **M3 — Order builder.** Create an order, add/remove line items from the
       catalog, edit quantity and price. Order persists.
 - [ ] **M4 — Calculations.** Calculation service produces line totals, order

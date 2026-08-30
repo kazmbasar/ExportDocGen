@@ -1,0 +1,100 @@
+@inject CustomerService CustomerService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form" Model="Model">
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="Model.Name" Label="Company name" Required="true"
+                                  RequiredError="Name is required" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="Model.AddressLine1" Label="Address line 1" Required="true"
+                                  RequiredError="Address is required" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="Model.AddressLine2" Label="Address line 2" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="Model.City" Label="City" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="Model.PostalCode" Label="Postal code" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="Model.Country" Label="Country" Required="true"
+                                  RequiredError="Country is required" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="Model.DefaultIncoterm" Label="Default incoterm"
+                                  HelperText="e.g. FOB Istanbul" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="Model.DefaultCurrency" Label="Default currency" Required="true"
+                                  RequiredError="Currency is required"
+                                  Validation="@(new Func<string, string?>(ValidateCurrency))"
+                                  HelperText="ISO code, e.g. USD" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="Model.ContactName" Label="Contact name" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="Model.ContactEmail" Label="Contact email"
+                                  Validation="@(new Func<string, string?>(ValidateEmail))" />
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save" Disabled="_saving">
+            @(IsNew ? "Add" : "Save")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public Customer Model { get; set; } = new();
+    [Parameter] public bool IsNew { get; set; }
+
+    private MudForm _form = default!;
+    private bool _saving;
+
+    private static string? ValidateCurrency(string value) =>
+        string.IsNullOrWhiteSpace(value) || value.Trim().Length is 3 and <= 3
+            ? null : "Use a 3-letter ISO code";
+
+    private static string? ValidateEmail(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        return value.Contains('@') && value.Contains('.') ? null : "Enter a valid email";
+    }
+
+    private async Task Save()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid) return;
+
+        _saving = true;
+        try
+        {
+            Model.DefaultCurrency = Model.DefaultCurrency.Trim().ToUpperInvariant();
+            if (IsNew)
+                await CustomerService.CreateAsync(Model);
+            else
+                await CustomerService.UpdateAsync(Model);
+
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+            _saving = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

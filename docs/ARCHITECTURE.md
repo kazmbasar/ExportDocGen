@@ -36,21 +36,21 @@ src/ExportDocGen/
 │   ├── Entities/                 # Customer, Product, Order, OrderLine
 │   ├── CompanyProfile.cs         # options bound from appsettings "CompanyProfile"
 │   └── SeedData.cs               # sample customers + products on first run
-├── Services/
-│   ├── CalculationService.cs     # all computed values from DATA-MODEL.md
-│   ├── OrderNumberGenerator.cs    # "EXP-{yyyy}-{seq:0000}"
-│   ├── CustomerService.cs
-│   ├── ProductService.cs
-│   └── OrderService.cs
+├── Services/                    # scoped; injected into components; use IDbContextFactory
+│   ├── CustomerService.cs        # ✅ M2 — GetAll/Get/Create/Update/Delete
+│   ├── ProductService.cs         # ✅ M2 — + PartNumberExistsAsync, includeInactive filter
+│   ├── CalculationService.cs     # M4 — all computed values from DATA-MODEL.md
+│   ├── OrderNumberGenerator.cs   # M3 — "EXP-{yyyy}-{seq:0000}"
+│   └── OrderService.cs           # M3
 ├── Documents/                    # QuestPDF IDocument classes
 │   ├── ProformaInvoiceDocument.cs
 │   ├── PackingListDocument.cs
 │   └── Shared/                   # header/footer components, styles
 ├── Components/
 │   ├── Pages/
-│   │   ├── Customers/            # List, Edit
-│   │   ├── Products/             # List, Edit
-│   │   └── Orders/               # List, Edit (builder), Detail
+│   │   ├── Customers/            # ✅ CustomerList + CustomerDialog
+│   │   ├── Products/             # ✅ ProductList + ProductDialog
+│   │   └── Orders/               # M3 — List, Edit (builder), Detail
 │   └── Layout/
 └── Migrations/                   # EF Core generated
 ```

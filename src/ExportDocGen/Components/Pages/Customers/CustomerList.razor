@@ -1,0 +1,112 @@
+@page "/customers"
+@inject CustomerService CustomerService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Customers</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h4">Customers</MudText>
+    <MudSpacer />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => OpenDialog(null))">
+        New customer
+    </MudButton>
+</MudStack>
+
+<MudDataGrid T="Customer" Items="_customers" Loading="_loading" Dense="true" Hover="true"
+             QuickFilter="_quickFilter" SortMode="SortMode.Multiple">
+    <ToolBarContent>
+        <MudTextField @bind-Value="_search" Placeholder="Search" Immediate="true"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                      IconSize="Size.Medium" Class="mt-0" Clearable="true" />
+    </ToolBarContent>
+    <Columns>
+        <PropertyColumn Property="c => c.Name" Title="Name" />
+        <PropertyColumn Property="c => c.Country" Title="Country" />
+        <PropertyColumn Property="c => c.DefaultIncoterm" Title="Incoterm" />
+        <PropertyColumn Property="c => c.DefaultCurrency" Title="Currency" />
+        <PropertyColumn Property="c => c.ContactName" Title="Contact" />
+        <TemplateColumn Title="" Sortable="false" Filterable="false" CellClass="d-flex justify-end">
+            <CellTemplate>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                               OnClick="@(() => OpenDialog(context.Item))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                               OnClick="@(() => Delete(context.Item))" />
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <NoRecordsContent>
+        <MudText>No customers yet. Add one to get started.</MudText>
+    </NoRecordsContent>
+</MudDataGrid>
+
+@code {
+    private List<Customer> _customers = [];
+    private bool _loading = true;
+    private string _search = "";
+
+    private Func<Customer, bool> _quickFilter => c =>
+    {
+        if (string.IsNullOrWhiteSpace(_search)) return true;
+        var s = _search.Trim();
+        return c.Name.Contains(s, StringComparison.OrdinalIgnoreCase)
+            || c.Country.Contains(s, StringComparison.OrdinalIgnoreCase)
+            || (c.ContactName?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false);
+    };
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load()
+    {
+        _loading = true;
+        _customers = await CustomerService.GetAllAsync();
+        _loading = false;
+    }
+
+    private async Task OpenDialog(Customer? customer)
+    {
+        var parameters = new DialogParameters<CustomerDialog>
+        {
+            { x => x.Model, customer is null ? new Customer() : Clone(customer) },
+            { x => x.IsNew, customer is null },
+        };
+        var dialog = await DialogService.ShowAsync<CustomerDialog>(
+            customer is null ? "New customer" : "Edit customer", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+
+        if (await dialog.Result is { Canceled: false })
+        {
+            Snackbar.Add(customer is null ? "Customer added." : "Customer updated.", Severity.Success);
+            await Load();
+        }
+    }
+
+    private async Task Delete(Customer customer)
+    {
+        var confirm = await DialogService.ShowMessageBoxAsync(
+            "Delete customer",
+            $"Delete \"{customer.Name}\"? This cannot be undone.",
+            yesText: "Delete", cancelText: "Cancel");
+
+        if (confirm != true) return;
+
+        if (await CustomerService.DeleteAsync(customer.Id))
+        {
+            Snackbar.Add("Customer deleted.", Severity.Success);
+            await Load();
+        }
+        else
+        {
+            Snackbar.Add("Cannot delete: this customer has orders.", Severity.Error);
+        }
+    }
+
+    private static Customer Clone(Customer c) => new()
+    {
+        Id = c.Id, Name = c.Name, AddressLine1 = c.AddressLine1, AddressLine2 = c.AddressLine2,
+        City = c.City, PostalCode = c.PostalCode, Country = c.Country,
+        DefaultIncoterm = c.DefaultIncoterm, DefaultCurrency = c.DefaultCurrency,
+        ContactName = c.ContactName, ContactEmail = c.ContactEmail,
+    };
+}

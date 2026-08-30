@@ -6,9 +6,10 @@ Excel/Word copy-paste.
 
 ## Status
 
-**M1 (Setup) complete.** Started 2026-08-31. Solution builds and runs; SQLite
-database, EF Core migration, seed data and the MudBlazor UI shell are in place.
-Next: M2 — Customer & Product CRUD screens. See [`docs/PLANNING.md`](docs/PLANNING.md).
+**M2 (Customer & Product CRUD) complete.** Started 2026-08-31. Solution builds
+and runs; SQLite database, EF Core migrations, seed data, MudBlazor UI shell, and
+list/add/edit/delete screens for Customers and Products are in place.
+Next: M3 — Order builder. See [`docs/PLANNING.md`](docs/PLANNING.md).
 
 ## Stack
 
@@ -59,6 +60,11 @@ ExportDocGen/
     └── ExportDocGen/           # Blazor Web App
         ├── Program.cs          # DI, DbContext factory, MudBlazor, startup migrate + seed
         ├── Data/               # AppDbContext, Entities/, SeedData, CompanyProfile
+        ├── Services/           # CustomerService, ProductService (scoped, use DbContextFactory)
         ├── Migrations/         # EF Core migrations
-        └── Components/         # Pages/, Layout/
+        └── Components/
+            ├── Layout/
+            └── Pages/
+                ├── Customers/  # CustomerList (/customers) + CustomerDialog
+                └── Products/   # ProductList (/products) + ProductDialog
 ```

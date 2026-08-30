@@ -1,0 +1,130 @@
+@page "/products"
+@inject ProductService ProductService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Products</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h4">Products</MudText>
+    <MudSpacer />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => OpenDialog(null))">
+        New product
+    </MudButton>
+</MudStack>
+
+<MudDataGrid T="Product" Items="_products" Loading="_loading" Dense="true" Hover="true"
+             QuickFilter="_quickFilter" SortMode="SortMode.Multiple">
+    <ToolBarContent>
+        <MudTextField @bind-Value="_search" Placeholder="Search" Immediate="true"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                      IconSize="Size.Medium" Class="mt-0" Clearable="true" />
+    </ToolBarContent>
+    <Columns>
+        <PropertyColumn Property="p => p.PartNumber" Title="Part no." />
+        <PropertyColumn Property="p => p.Description" Title="Description" />
+        <PropertyColumn Property="p => p.FilterType" Title="Type" />
+        <PropertyColumn Property="p => p.HsCode" Title="HS code" />
+        <PropertyColumn Property="p => p.NetWeightKg" Title="Net kg" Format="0.###" />
+        <PropertyColumn Property="p => p.GrossWeightKg" Title="Gross kg" Format="0.###" />
+        <PropertyColumn Property="p => p.UnitsPerCarton" Title="Units/ctn" />
+        <PropertyColumn Property="p => p.DefaultUnitPrice" Title="Price" Format="0.00" />
+        <TemplateColumn Title="Active" Sortable="false">
+            <CellTemplate>
+                @if (context.Item.IsActive)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text">Yes</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Text">No</MudChip>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="" Sortable="false" Filterable="false" CellClass="d-flex justify-end">
+            <CellTemplate>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                               OnClick="@(() => OpenDialog(context.Item))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                               OnClick="@(() => Delete(context.Item))" />
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <NoRecordsContent>
+        <MudText>No products yet. Add one to get started.</MudText>
+    </NoRecordsContent>
+</MudDataGrid>
+
+@code {
+    private List<Product> _products = [];
+    private bool _loading = true;
+    private string _search = "";
+
+    private Func<Product, bool> _quickFilter => p =>
+    {
+        if (string.IsNullOrWhiteSpace(_search)) return true;
+        var s = _search.Trim();
+        return p.PartNumber.Contains(s, StringComparison.OrdinalIgnoreCase)
+            || p.Description.Contains(s, StringComparison.OrdinalIgnoreCase)
+            || (p.FilterType?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (p.HsCode?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false);
+    };
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load()
+    {
+        _loading = true;
+        _products = await ProductService.GetAllAsync();
+        _loading = false;
+    }
+
+    private async Task OpenDialog(Product? product)
+    {
+        var parameters = new DialogParameters<ProductDialog>
+        {
+            { x => x.Model, product is null ? new Product() : Clone(product) },
+            { x => x.IsNew, product is null },
+        };
+        var dialog = await DialogService.ShowAsync<ProductDialog>(
+            product is null ? "New product" : "Edit product", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+
+        if (await dialog.Result is { Canceled: false })
+        {
+            Snackbar.Add(product is null ? "Product added." : "Product updated.", Severity.Success);
+            await Load();
+        }
+    }
+
+    private async Task Delete(Product product)
+    {
+        var confirm = await DialogService.ShowMessageBoxAsync(
+            "Delete product",
+            $"Delete \"{product.PartNumber}\"? This cannot be undone.",
+            yesText: "Delete", cancelText: "Cancel");
+
+        if (confirm != true) return;
+
+        if (await ProductService.DeleteAsync(product.Id))
+        {
+            Snackbar.Add("Product deleted.", Severity.Success);
+            await Load();
+        }
+        else
+        {
+            Snackbar.Add("Cannot delete: this product is used on an order. Mark it inactive instead.", Severity.Error);
+        }
+    }
+
+    private static Product Clone(Product p) => new()
+    {
+        Id = p.Id, PartNumber = p.PartNumber, Description = p.Description, HsCode = p.HsCode,
+        FilterType = p.FilterType, NetWeightKg = p.NetWeightKg, GrossWeightKg = p.GrossWeightKg,
+        UnitsPerCarton = p.UnitsPerCarton, CartonLengthCm = p.CartonLengthCm,
+        CartonWidthCm = p.CartonWidthCm, CartonHeightCm = p.CartonHeightCm,
+        CartonTareWeightKg = p.CartonTareWeightKg, DefaultUnitPrice = p.DefaultUnitPrice,
+        IsActive = p.IsActive,
+    };
+}

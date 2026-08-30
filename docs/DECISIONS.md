@@ -5,6 +5,22 @@ revisit.
 
 ---
 
+## 2026-08-31 — M2 CRUD pattern.
+
+**Decided:**
+- List screens use `MudDataGrid<T>` with `Items` bound to an in-memory list
+  (whole tables are small); quick-filter text box in the toolbar.
+- Add/Edit use a `MudDialog` component per entity (`CustomerDialog`,
+  `ProductDialog`) with `MudForm` validation; the list clones the entity before
+  editing so a cancelled edit does not mutate the grid row.
+- Delete uses `DialogService.ShowMessageBoxAsync` to confirm; services refuse to
+  delete a customer/product that is referenced by an order and the UI shows a
+  snackbar telling the user to mark it inactive instead.
+- Services are `Scoped`, injected into components, and each opens a short-lived
+  `AppDbContext` from the factory per call (queries use `AsNoTracking`).
+**Revisit if:** tables grow large enough to need server-side paging/sorting
+(→ `MudDataGrid` `ServerData`).
+
 ## 2026-08-31 — M1 scaffold choices.
 
 **Decided during scaffold:**

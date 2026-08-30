@@ -1,0 +1,112 @@
+@inject ProductService ProductService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form" Model="Model">
+            <MudGrid>
+                <MudItem xs="12" sm="4">
+                    <MudTextField @bind-Value="Model.PartNumber" Label="Part number" Required="true"
+                                  RequiredError="Part number is required" />
+                </MudItem>
+                <MudItem xs="12" sm="8">
+                    <MudTextField @bind-Value="Model.Description" Label="Description" Required="true"
+                                  RequiredError="Description is required" />
+                </MudItem>
+                <MudItem xs="6" sm="4">
+                    <MudSelect @bind-Value="Model.FilterType" Label="Filter type" Clearable="true">
+                        <MudSelectItem Value="@("air")">air</MudSelectItem>
+                        <MudSelectItem Value="@("oil")">oil</MudSelectItem>
+                        <MudSelectItem Value="@("fuel")">fuel</MudSelectItem>
+                        <MudSelectItem Value="@("cabin")">cabin</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="6" sm="4">
+                    <MudTextField @bind-Value="Model.HsCode" Label="HS code" />
+                </MudItem>
+                <MudItem xs="6" sm="4">
+                    <MudCheckBox @bind-Value="Model.IsActive" Label="Active" />
+                </MudItem>
+
+                <MudItem xs="12"><MudText Typo="Typo.subtitle2" Class="mt-2">Weights (per unit, kg)</MudText></MudItem>
+                <MudItem xs="6" sm="3">
+                    <MudNumericField @bind-Value="Model.NetWeightKg" Label="Net weight" Min="0" Format="0.###" />
+                </MudItem>
+                <MudItem xs="6" sm="3">
+                    <MudNumericField @bind-Value="Model.GrossWeightKg" Label="Gross weight" Min="0" Format="0.###" />
+                </MudItem>
+
+                <MudItem xs="12"><MudText Typo="Typo.subtitle2" Class="mt-2">Carton</MudText></MudItem>
+                <MudItem xs="6" sm="3">
+                    <MudNumericField @bind-Value="Model.UnitsPerCarton" Label="Units / carton" Min="1" />
+                </MudItem>
+                <MudItem xs="6" sm="3">
+                    <MudNumericField @bind-Value="Model.CartonTareWeightKg" Label="Empty carton kg" Min="0" Format="0.###" />
+                </MudItem>
+                <MudItem xs="4" sm="2">
+                    <MudNumericField @bind-Value="Model.CartonLengthCm" Label="Length cm" Min="0" Format="0.#" />
+                </MudItem>
+                <MudItem xs="4" sm="2">
+                    <MudNumericField @bind-Value="Model.CartonWidthCm" Label="Width cm" Min="0" Format="0.#" />
+                </MudItem>
+                <MudItem xs="4" sm="2">
+                    <MudNumericField @bind-Value="Model.CartonHeightCm" Label="Height cm" Min="0" Format="0.#" />
+                </MudItem>
+
+                <MudItem xs="12"><MudText Typo="Typo.subtitle2" Class="mt-2">Pricing</MudText></MudItem>
+                <MudItem xs="6" sm="3">
+                    <MudNumericField @bind-Value="Model.DefaultUnitPrice" Label="Default unit price" Min="0" Format="0.00"
+                                     HelperText="Optional catalog price" />
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save" Disabled="_saving">
+            @(IsNew ? "Add" : "Save")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public Product Model { get; set; } = new();
+    [Parameter] public bool IsNew { get; set; }
+
+    private MudForm _form = default!;
+    private bool _saving;
+
+    private async Task Save()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid) return;
+
+        Model.PartNumber = Model.PartNumber.Trim();
+
+        if (await ProductService.PartNumberExistsAsync(Model.PartNumber, IsNew ? null : Model.Id))
+        {
+            Snackbar.Add($"Part number \"{Model.PartNumber}\" already exists.", Severity.Error);
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            if (IsNew)
+                await ProductService.CreateAsync(Model);
+            else
+                await ProductService.UpdateAsync(Model);
+
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+            _saving = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}
