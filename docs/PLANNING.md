@@ -62,9 +62,11 @@ output.
       remove product lines with quantity + unit price, live money subtotal, auto
       order number `EXP-{year}-{seq}`. `OrderService` + xUnit tests for the
       create/update/delete round-trip and numbering.
-- [ ] **M4 — Calculations.** Calculation service produces line totals, order
-      total, total net/gross weight, carton count, CBM. Displayed live on the
-      order screen. Unit-tested.
+- [x] **M4 — Calculations.** _(2026-08-31)_ `CalculationService` (pure, no DB)
+      produces per-line and order totals: money, net weight, ship gross weight
+      (incl. carton tare), carton count, CBM — per the DATA-MODEL formulas.
+      Shown live on the order builder (per-line cartons/net + a summary row).
+      9 unit tests.
 - [ ] **M5 — Excel order import.** Upload a customer's order spreadsheet; the
       program reads the customer and every line row (part reference, quantity,
       unit price, …), matches them against the catalog, and creates the order in

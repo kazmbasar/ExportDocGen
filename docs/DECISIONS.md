@@ -5,6 +5,21 @@ revisit.
 
 ---
 
+## 2026-08-31 — M4 calculation rounding.
+
+**Decided:**
+- `CalculationService` is pure (no DB) — takes quantity, unit price and a
+  `Product`; returns `LineCalculation` / `OrderCalculation` records.
+- Rounding: money 2 dp, weights 3 dp, volume 3 dp, all
+  `MidpointRounding.AwayFromZero`. Rounded **per line**, then order totals are
+  the sum of the rounded lines — so the documents' line figures always add up to
+  the shown totals.
+- "Gross weight" on screen and documents means **ship gross** = quantity ×
+  product gross + (cartons × carton tare). Product-only gross is not surfaced.
+- `UnitsPerCarton <= 0` is treated as 1 (defensive; the editor enforces min 1).
+**Revisit if:** a customer/bank expects different rounding, or pallet weight
+needs to be added on top of carton tare.
+
 ## 2026-08-31 — M3 order builder + tests.
 
 **Decided:**

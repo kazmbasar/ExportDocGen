@@ -6,11 +6,11 @@ Excel/Word copy-paste.
 
 ## Status
 
-**M3 (Order builder) complete.** Started 2026-08-31. Solution builds, runs, and
-has a passing test suite. SQLite database, EF Core migrations, seed data, the
-MudBlazor UI shell, Customer/Product CRUD, and the order builder (customer +
-line items with quantity and price, money subtotal, persists) are all in place.
-Next: M4 — Calculations (weights, carton count, CBM). See
+**M4 (Calculations) complete.** Started 2026-08-31. Solution builds, runs, and
+has 16 passing tests. SQLite database, EF Core migrations, seed data, the
+MudBlazor UI shell, Customer/Product CRUD, the order builder, and live
+per-line + order calculations (money total, net/gross weight, carton count,
+CBM) are all in place. Next: M5 — Excel order import. See
 [`docs/PLANNING.md`](docs/PLANNING.md).
 
 ## Stack

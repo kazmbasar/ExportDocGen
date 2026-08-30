@@ -3,6 +3,7 @@
 @inject OrderService OrderService
 @inject CustomerService CustomerService
 @inject ProductService ProductService
+@inject CalculationService Calc
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
 
@@ -64,20 +65,23 @@ else
     <MudSimpleTable Dense="true" Hover="true" Style="overflow-x:auto">
         <thead>
             <tr>
-                <th style="width:40%">Product</th>
-                <th style="width:15%">Quantity</th>
-                <th style="width:20%">Unit price</th>
-                <th style="width:20%" class="text-right">Line total</th>
+                <th style="width:34%">Product</th>
+                <th style="width:12%">Quantity</th>
+                <th style="width:16%">Unit price</th>
+                <th style="width:10%" class="text-right">Cartons</th>
+                <th style="width:14%" class="text-right">Net kg</th>
+                <th style="width:14%" class="text-right">Line total</th>
                 <th style="width:5%"></th>
             </tr>
         </thead>
         <tbody>
             @if (_order.Lines.Count == 0)
             {
-                <tr><td colspan="5"><MudText Typo="Typo.body2">No lines yet.</MudText></td></tr>
+                <tr><td colspan="7"><MudText Typo="Typo.body2">No lines yet.</MudText></td></tr>
             }
             @foreach (var line in _order.Lines)
             {
+                var calc = LineCalc(line);
                 <tr @key="line">
                     <td>
                         <MudSelect T="int" Value="line.ProductId" Dense="true"
@@ -94,7 +98,9 @@ else
                     <td>
                         <MudNumericField T="decimal" @bind-Value="line.UnitPrice" Min="0" Format="0.00" Margin="Margin.Dense" />
                     </td>
-                    <td class="text-right">@LineTotal(line).ToString("N2")</td>
+                    <td class="text-right">@(calc?.Cartons.ToString() ?? "–")</td>
+                    <td class="text-right">@(calc?.NetWeightKg.ToString("0.###") ?? "–")</td>
+                    <td class="text-right">@(calc?.LineTotal.ToString("N2") ?? "–")</td>
                     <td>
                         <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
                                        OnClick="@(() => _order.Lines.Remove(line))" />
@@ -102,17 +108,44 @@ else
                 </tr>
             }
         </tbody>
-        <tfoot>
-            <tr>
-                <td colspan="3" class="text-right"><strong>Subtotal</strong></td>
-                <td class="text-right"><strong>@Subtotal.ToString("N2") @_order.Currency</strong></td>
-                <td></td>
-            </tr>
-        </tfoot>
     </MudSimpleTable>
 
+    <MudGrid Class="mt-4">
+        <MudItem xs="6" sm="4" md="2">
+            <MudPaper Class="pa-3" Elevation="0" Outlined="true">
+                <MudText Typo="Typo.overline">Order total</MudText>
+                <MudText Typo="Typo.h6">@Calculation.OrderTotal.ToString("N2") @_order.Currency</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" sm="4" md="2">
+            <MudPaper Class="pa-3" Elevation="0" Outlined="true">
+                <MudText Typo="Typo.overline">Net weight</MudText>
+                <MudText Typo="Typo.h6">@Calculation.TotalNetWeightKg.ToString("0.###") kg</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" sm="4" md="2">
+            <MudPaper Class="pa-3" Elevation="0" Outlined="true">
+                <MudText Typo="Typo.overline">Gross weight</MudText>
+                <MudText Typo="Typo.h6">@Calculation.TotalGrossWeightKg.ToString("0.###") kg</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" sm="4" md="2">
+            <MudPaper Class="pa-3" Elevation="0" Outlined="true">
+                <MudText Typo="Typo.overline">Cartons</MudText>
+                <MudText Typo="Typo.h6">@Calculation.TotalCartons</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" sm="4" md="2">
+            <MudPaper Class="pa-3" Elevation="0" Outlined="true">
+                <MudText Typo="Typo.overline">Volume (CBM)</MudText>
+                <MudText Typo="Typo.h6">@Calculation.TotalVolumeM3.ToString("0.###")</MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
     <MudText Typo="Typo.caption" Class="mt-2">
-        Weights, carton counts and volume are calculated on the documents (milestone M4/M5).
+        Gross weight includes empty-carton weight. Cartons round up to whole
+        cartons per line. Volume is outer-carton CBM.
     </MudText>
 }
 
@@ -125,18 +158,32 @@ else
     private DateTime? _orderDate = DateTime.Today;
     private List<Customer> _customers = [];
     private List<Product> _products = [];
+    private Dictionary<int, Product> _productLookup = [];
     private MudForm _form = default!;
     private bool _loading = true;
     private bool _saving;
 
-    private decimal LineTotal(OrderLine l) => l.Quantity * l.UnitPrice;
-    private decimal Subtotal => _order.Lines.Sum(LineTotal);
+    private Product? ProductFor(int productId) =>
+        _productLookup.TryGetValue(productId, out var p) ? p : null;
+
+    private LineCalculation? LineCalc(OrderLine line)
+    {
+        var product = ProductFor(line.ProductId);
+        return product is null ? null : Calc.CalculateLine(line.Quantity, line.UnitPrice, product);
+    }
+
+    private OrderCalculation Calculation => Calc.CalculateOrder(
+        _order.Lines
+            .Select(l => (l.Quantity, l.UnitPrice, Product: ProductFor(l.ProductId)))
+            .Where(t => t.Product is not null)
+            .Select(t => (t.Quantity, t.UnitPrice, t.Product!)));
 
     protected override async Task OnParametersSetAsync()
     {
         _loading = true;
         _customers = await CustomerService.GetAllAsync();
         _products = await ProductService.GetAllAsync(includeInactive: false);
+        _productLookup = _products.ToDictionary(p => p.Id);
 
         if (IsNew)
         {
@@ -154,6 +201,10 @@ else
             }
             _order = loaded;
             _orderDate = _order.OrderDate.ToDateTime(TimeOnly.MinValue);
+
+            // Include products that are on the order but no longer in the active catalog.
+            foreach (var line in _order.Lines.Where(l => l.Product is not null))
+                _productLookup.TryAdd(line.Product!.Id, line.Product!);
         }
         _loading = false;
     }

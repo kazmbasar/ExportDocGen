@@ -41,7 +41,7 @@ src/ExportDocGen/
 │   ├── ProductService.cs         # ✅ M2 — + PartNumberExistsAsync, includeInactive filter
 │   ├── OrderService.cs           # ✅ M3 — list/get/create/update/delete + line reconcile
 │   ├── OrderNumberGenerator.cs   # ✅ M3 — "EXP-{year}-{seq:0000}", per-year sequence
-│   └── CalculationService.cs     # M4 — all computed values from DATA-MODEL.md
+│   └── CalculationService.cs     # ✅ M4 — pure; line + order money/weight/carton/CBM
 ├── Documents/                    # QuestPDF IDocument classes
 │   ├── ProformaInvoiceDocument.cs
 │   ├── PackingListDocument.cs
@@ -58,8 +58,9 @@ src/ExportDocGen/
 `tests/ExportDocGen.Tests/` — xUnit. `SqliteTestFactory` gives each test an
 isolated in-memory SQLite database (connection kept open) behind
 `IDbContextFactory<AppDbContext>`, so FK/cascade/unique-index behaviour is real.
-Current coverage: `OrderService` round-trip + line reconciliation, order-number
-sequencing, delete guards. `CalculationService` is the next target (M4).
+Current coverage (16 tests): `OrderService` round-trip + line reconciliation,
+order-number sequencing, delete guards, and `CalculationService` line/order
+formulas, carton rounding, and money rounding.
 
 ## Key conventions
 

@@ -31,6 +31,7 @@ builder.Services.AddScoped<CustomerService>();
 builder.Services.AddScoped<ProductService>();
 builder.Services.AddScoped<OrderNumberGenerator>();
 builder.Services.AddScoped<OrderService>();
+builder.Services.AddScoped<CalculationService>();
 
 // QuestPDF Community license (free for companies under the revenue threshold).
 QuestPDF.Settings.License = LicenseType.Community;
