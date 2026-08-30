@@ -106,5 +106,14 @@ the source tree.
 
 ## Deployment (later)
 
-`Dockerfile` (multi-stage `dotnet publish`) authored during M6 but not part of
+`Dockerfile` (multi-stage `dotnet publish`) authored during M7 but not part of
 MVP. Local run is `dotnet run` or a published self-contained binary.
+
+## Excel order import (M5)
+
+Planned addition after M4. New `Import/` folder: an `.xlsx` reader
+(`ClosedXML` or `EPPlus` — licence check first), a configurable column-mapping
+model, and a matcher that resolves the customer and each line row against the
+catalog. A review page (`/orders/import`) lets the user fix unmatched rows
+before the order is created through the existing `OrderService`. See
+`docs/PLANNING.md` → "Excel order import" for the full flow and scope.
