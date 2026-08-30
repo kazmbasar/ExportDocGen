@@ -19,7 +19,7 @@ Browser ──HTTP/SignalR──> Blazor Web App (Server interactivity)
 
 | Choice | Reason |
 |--------|--------|
-| Blazor Web App, **Server** interactivity | Single language (C#) for UI + logic; no API layer; no WASM download; fine for a local single-user tool. |
+| Blazor Web App, **global Server** interactivity (`@rendermode="InteractiveServer"` on `<HeadOutlet>` + `<Routes>` in `App.razor`) | Single language (C#) for UI + logic; no API layer; no WASM download; fine for a local single-user tool. Global (not per-page) because every screen here is interactive. |
 | **SQLite** | Zero setup, single file, trivial backup (copy the file). Swap to PostgreSQL later only if it becomes multi-user. |
 | **EF Core Code-First + migrations** | Familiar, versioned schema, easy seeding. |
 | **QuestPDF** | Clean C# layout API, strong docs, actively maintained; good fit for structured business documents. |

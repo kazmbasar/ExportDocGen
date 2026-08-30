@@ -5,6 +5,18 @@ revisit.
 
 ---
 
+## 2026-08-31 — Global interactive render mode.
+
+**Decision:** `App.razor` sets `@rendermode="InteractiveServer"` on `<HeadOutlet>`
+and `<Routes>`, making every page interactive (equivalent to the template's
+`--all-interactive`).
+**Why:** The scaffold used per-component interactivity, so pages rendered as
+static HTML and **buttons/dialogs did nothing** (no circuit, no event handlers).
+This is a line-of-business app where essentially every screen is interactive, so
+a global mode is simpler than annotating each page.
+**Revisit if:** a mostly-static public page is added where prerender-only would
+be faster — annotate that page individually instead.
+
 ## 2026-08-31 — M2 CRUD pattern.
 
 **Decided:**
