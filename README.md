@@ -6,10 +6,12 @@ Excel/Word copy-paste.
 
 ## Status
 
-**M2 (Customer & Product CRUD) complete.** Started 2026-08-31. Solution builds
-and runs; SQLite database, EF Core migrations, seed data, MudBlazor UI shell, and
-list/add/edit/delete screens for Customers and Products are in place.
-Next: M3 — Order builder. See [`docs/PLANNING.md`](docs/PLANNING.md).
+**M3 (Order builder) complete.** Started 2026-08-31. Solution builds, runs, and
+has a passing test suite. SQLite database, EF Core migrations, seed data, the
+MudBlazor UI shell, Customer/Product CRUD, and the order builder (customer +
+line items with quantity and price, money subtotal, persists) are all in place.
+Next: M4 — Calculations (weights, carton count, CBM). See
+[`docs/PLANNING.md`](docs/PLANNING.md).
 
 ## Stack
 
@@ -38,6 +40,12 @@ Add a migration after changing an entity:
 dotnet dotnet-ef migrations add <Name> --project src/ExportDocGen
 ```
 
+Run the tests:
+
+```bash
+dotnet test
+```
+
 ## Documentation
 
 | Doc | Purpose |
@@ -56,15 +64,18 @@ ExportDocGen/
 ├── ExportDocGen.slnx           # solution (new XML format)
 ├── dotnet-tools.json           # local tools (dotnet-ef)
 ├── docs/
+├── tests/
+│   └── ExportDocGen.Tests/     # xUnit; SQLite in-memory; service round-trip tests
 └── src/
     └── ExportDocGen/           # Blazor Web App
         ├── Program.cs          # DI, DbContext factory, MudBlazor, startup migrate + seed
         ├── Data/               # AppDbContext, Entities/, SeedData, CompanyProfile
-        ├── Services/           # CustomerService, ProductService (scoped, use DbContextFactory)
+        ├── Services/           # Customer/Product/Order services, OrderNumberGenerator
         ├── Migrations/         # EF Core migrations
         └── Components/
             ├── Layout/
             └── Pages/
                 ├── Customers/  # CustomerList (/customers) + CustomerDialog
-                └── Products/   # ProductList (/products) + ProductDialog
+                ├── Products/   # ProductList (/products) + ProductDialog
+                └── Orders/     # OrderList (/orders) + OrderEdit (/orders/new, /orders/{id})
 ```

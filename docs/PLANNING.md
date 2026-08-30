@@ -57,8 +57,11 @@ output.
 - [x] **M2 — Customer & product CRUD.** _(2026-08-31)_ MudDataGrid list screens +
       MudDialog add/edit forms for both entities, with delete confirmation and
       referential-integrity guards. `CustomerService` / `ProductService`.
-- [ ] **M3 — Order builder.** Create an order, add/remove line items from the
-      catalog, edit quantity and price. Order persists.
+- [x] **M3 — Order builder.** _(2026-08-31)_ `/orders` list + `/orders/new` and
+      `/orders/{id}` builder: pick customer (prefills incoterm/currency), add/
+      remove product lines with quantity + unit price, live money subtotal, auto
+      order number `EXP-{year}-{seq}`. `OrderService` + xUnit tests for the
+      create/update/delete round-trip and numbering.
 - [ ] **M4 — Calculations.** Calculation service produces line totals, order
       total, total net/gross weight, carton count, CBM. Displayed live on the
       order screen. Unit-tested.

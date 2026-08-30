@@ -1,0 +1,82 @@
+@page "/orders"
+@inject OrderService OrderService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Orders</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h4">Orders</MudText>
+    <MudSpacer />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add" Href="/orders/new">
+        New order
+    </MudButton>
+</MudStack>
+
+<MudDataGrid T="OrderListItem" Items="_orders" Loading="_loading" Dense="true" Hover="true"
+             QuickFilter="_quickFilter" SortMode="SortMode.Multiple">
+    <ToolBarContent>
+        <MudTextField @bind-Value="_search" Placeholder="Search" Immediate="true"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                      IconSize="Size.Medium" Class="mt-0" Clearable="true" />
+    </ToolBarContent>
+    <Columns>
+        <PropertyColumn Property="o => o.OrderNumber" Title="Order no." />
+        <PropertyColumn Property="o => o.OrderDate" Title="Date" Format="yyyy-MM-dd" />
+        <PropertyColumn Property="o => o.CustomerName" Title="Customer" />
+        <PropertyColumn Property="o => o.LineCount" Title="Lines" />
+        <TemplateColumn Title="Subtotal" Sortable="false">
+            <CellTemplate>@context.Item.Subtotal.ToString("N2") @context.Item.Currency</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="" Sortable="false" Filterable="false" CellClass="d-flex justify-end">
+            <CellTemplate>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                               Href="@($"/orders/{context.Item.Id}")" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                               OnClick="@(() => Delete(context.Item))" />
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <NoRecordsContent>
+        <MudText>No orders yet. Create one to get started.</MudText>
+    </NoRecordsContent>
+</MudDataGrid>
+
+@code {
+    private List<OrderListItem> _orders = [];
+    private bool _loading = true;
+    private string _search = "";
+
+    private Func<OrderListItem, bool> _quickFilter => o =>
+    {
+        if (string.IsNullOrWhiteSpace(_search)) return true;
+        var s = _search.Trim();
+        return o.OrderNumber.Contains(s, StringComparison.OrdinalIgnoreCase)
+            || o.CustomerName.Contains(s, StringComparison.OrdinalIgnoreCase);
+    };
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load()
+    {
+        _loading = true;
+        _orders = await OrderService.GetListAsync();
+        _loading = false;
+    }
+
+    private async Task Delete(OrderListItem order)
+    {
+        var confirm = await DialogService.ShowMessageBoxAsync(
+            "Delete order",
+            $"Delete order {order.OrderNumber}? This cannot be undone.",
+            yesText: "Delete", cancelText: "Cancel");
+
+        if (confirm != true) return;
+
+        await OrderService.DeleteAsync(order.Id);
+        Snackbar.Add("Order deleted.", Severity.Success);
+        await Load();
+    }
+}

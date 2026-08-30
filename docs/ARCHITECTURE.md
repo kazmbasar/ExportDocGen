@@ -39,9 +39,9 @@ src/ExportDocGen/
 ├── Services/                    # scoped; injected into components; use IDbContextFactory
 │   ├── CustomerService.cs        # ✅ M2 — GetAll/Get/Create/Update/Delete
 │   ├── ProductService.cs         # ✅ M2 — + PartNumberExistsAsync, includeInactive filter
-│   ├── CalculationService.cs     # M4 — all computed values from DATA-MODEL.md
-│   ├── OrderNumberGenerator.cs   # M3 — "EXP-{yyyy}-{seq:0000}"
-│   └── OrderService.cs           # M3
+│   ├── OrderService.cs           # ✅ M3 — list/get/create/update/delete + line reconcile
+│   ├── OrderNumberGenerator.cs   # ✅ M3 — "EXP-{year}-{seq:0000}", per-year sequence
+│   └── CalculationService.cs     # M4 — all computed values from DATA-MODEL.md
 ├── Documents/                    # QuestPDF IDocument classes
 │   ├── ProformaInvoiceDocument.cs
 │   ├── PackingListDocument.cs
@@ -50,13 +50,16 @@ src/ExportDocGen/
 │   ├── Pages/
 │   │   ├── Customers/            # ✅ CustomerList + CustomerDialog
 │   │   ├── Products/             # ✅ ProductList + ProductDialog
-│   │   └── Orders/               # M3 — List, Edit (builder), Detail
+│   │   └── Orders/               # ✅ OrderList + OrderEdit (new + edit share one page)
 │   └── Layout/
 └── Migrations/                   # EF Core generated
 ```
 
-Optional later: `tests/ExportDocGen.Tests/` (xUnit) — primary target is
-`CalculationService`.
+`tests/ExportDocGen.Tests/` — xUnit. `SqliteTestFactory` gives each test an
+isolated in-memory SQLite database (connection kept open) behind
+`IDbContextFactory<AppDbContext>`, so FK/cascade/unique-index behaviour is real.
+Current coverage: `OrderService` round-trip + line reconciliation, order-number
+sequencing, delete guards. `CalculationService` is the next target (M4).
 
 ## Key conventions
 

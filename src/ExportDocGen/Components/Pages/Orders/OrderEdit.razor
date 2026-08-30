@@ -1,0 +1,241 @@
+@page "/orders/new"
+@page "/orders/{Id:int}"
+@inject OrderService OrderService
+@inject CustomerService CustomerService
+@inject ProductService ProductService
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>@(IsNew ? "New order" : _order.OrderNumber)</PageTitle>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else
+{
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+        <MudText Typo="Typo.h4">@(IsNew ? "New order" : $"Order {_order.OrderNumber}")</MudText>
+        <MudSpacer />
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save" Disabled="_saving">
+            Save
+        </MudButton>
+    </MudStack>
+
+    <MudForm @ref="_form" Model="_order">
+        <MudGrid>
+            <MudItem xs="12" sm="6" md="4">
+                <MudSelect T="int" Label="Customer" Value="_order.CustomerId"
+                           ValueChanged="OnCustomerChanged" Required="true"
+                           RequiredError="Choose a customer">
+                    @foreach (var c in _customers)
+                    {
+                        <MudSelectItem T="int" Value="c.Id">@c.Name (@c.Country)</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" sm="3" md="2">
+                <MudDatePicker Label="Order date" Date="_orderDate" DateChanged="d => _orderDate = d" />
+            </MudItem>
+            <MudItem xs="6" sm="3" md="2">
+                <MudTextField @bind-Value="_order.Currency" Label="Currency" Required="true" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudTextField @bind-Value="_order.Incoterm" Label="Incoterm" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudTextField @bind-Value="_order.PaymentTerms" Label="Payment terms" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="8">
+                <MudTextField @bind-Value="_order.Notes" Label="Notes" Lines="2" />
+            </MudItem>
+        </MudGrid>
+    </MudForm>
+
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mt-6 mb-2">
+        <MudText Typo="Typo.h6">Lines</MudText>
+        <MudSpacer />
+        <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.Add" OnClick="AddLine">
+            Add line
+        </MudButton>
+    </MudStack>
+
+    <MudSimpleTable Dense="true" Hover="true" Style="overflow-x:auto">
+        <thead>
+            <tr>
+                <th style="width:40%">Product</th>
+                <th style="width:15%">Quantity</th>
+                <th style="width:20%">Unit price</th>
+                <th style="width:20%" class="text-right">Line total</th>
+                <th style="width:5%"></th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (_order.Lines.Count == 0)
+            {
+                <tr><td colspan="5"><MudText Typo="Typo.body2">No lines yet.</MudText></td></tr>
+            }
+            @foreach (var line in _order.Lines)
+            {
+                <tr @key="line">
+                    <td>
+                        <MudSelect T="int" Value="line.ProductId" Dense="true"
+                                   ValueChanged="v => OnLineProductChanged(line, v)">
+                            @foreach (var p in _products)
+                            {
+                                <MudSelectItem T="int" Value="p.Id">@p.PartNumber — @p.Description</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </td>
+                    <td>
+                        <MudNumericField T="int" @bind-Value="line.Quantity" Min="1" Margin="Margin.Dense" />
+                    </td>
+                    <td>
+                        <MudNumericField T="decimal" @bind-Value="line.UnitPrice" Min="0" Format="0.00" Margin="Margin.Dense" />
+                    </td>
+                    <td class="text-right">@LineTotal(line).ToString("N2")</td>
+                    <td>
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                       OnClick="@(() => _order.Lines.Remove(line))" />
+                    </td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3" class="text-right"><strong>Subtotal</strong></td>
+                <td class="text-right"><strong>@Subtotal.ToString("N2") @_order.Currency</strong></td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </MudSimpleTable>
+
+    <MudText Typo="Typo.caption" Class="mt-2">
+        Weights, carton counts and volume are calculated on the documents (milestone M4/M5).
+    </MudText>
+}
+
+@code {
+    [Parameter] public int? Id { get; set; }
+
+    private bool IsNew => Id is null;
+
+    private Order _order = new();
+    private DateTime? _orderDate = DateTime.Today;
+    private List<Customer> _customers = [];
+    private List<Product> _products = [];
+    private MudForm _form = default!;
+    private bool _loading = true;
+    private bool _saving;
+
+    private decimal LineTotal(OrderLine l) => l.Quantity * l.UnitPrice;
+    private decimal Subtotal => _order.Lines.Sum(LineTotal);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true;
+        _customers = await CustomerService.GetAllAsync();
+        _products = await ProductService.GetAllAsync(includeInactive: false);
+
+        if (IsNew)
+        {
+            _order = new Order { Currency = "USD" };
+            _orderDate = DateTime.Today;
+        }
+        else
+        {
+            var loaded = await OrderService.GetAsync(Id!.Value);
+            if (loaded is null)
+            {
+                Snackbar.Add("Order not found.", Severity.Error);
+                Nav.NavigateTo("/orders");
+                return;
+            }
+            _order = loaded;
+            _orderDate = _order.OrderDate.ToDateTime(TimeOnly.MinValue);
+        }
+        _loading = false;
+    }
+
+    private void OnCustomerChanged(int customerId)
+    {
+        _order.CustomerId = customerId;
+        var customer = _customers.FirstOrDefault(c => c.Id == customerId);
+        if (customer is not null)
+        {
+            if (string.IsNullOrWhiteSpace(_order.Incoterm))
+                _order.Incoterm = customer.DefaultIncoterm ?? "";
+            if (IsNew || string.IsNullOrWhiteSpace(_order.Currency))
+                _order.Currency = customer.DefaultCurrency;
+        }
+    }
+
+    private void AddLine()
+    {
+        var firstProduct = _products.FirstOrDefault();
+        _order.Lines.Add(new OrderLine
+        {
+            ProductId = firstProduct?.Id ?? 0,
+            Quantity = 1,
+            UnitPrice = firstProduct?.DefaultUnitPrice ?? 0m,
+        });
+    }
+
+    private void OnLineProductChanged(OrderLine line, int productId)
+    {
+        line.ProductId = productId;
+        var product = _products.FirstOrDefault(p => p.Id == productId);
+        if (product?.DefaultUnitPrice is { } price && line.UnitPrice == 0m)
+            line.UnitPrice = price;
+    }
+
+    private async Task Save()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid)
+            return;
+        if (_order.CustomerId == 0)
+        {
+            Snackbar.Add("Choose a customer.", Severity.Error);
+            return;
+        }
+        if (_order.Lines.Count == 0)
+        {
+            Snackbar.Add("Add at least one line.", Severity.Error);
+            return;
+        }
+        if (_order.Lines.Any(l => l.ProductId == 0))
+        {
+            Snackbar.Add("Every line needs a product.", Severity.Error);
+            return;
+        }
+
+        _order.OrderDate = DateOnly.FromDateTime(_orderDate ?? DateTime.Today);
+        _order.Currency = _order.Currency.Trim().ToUpperInvariant();
+
+        _saving = true;
+        try
+        {
+            if (IsNew)
+            {
+                var newId = await OrderService.CreateAsync(_order);
+                Snackbar.Add("Order created.", Severity.Success);
+                Nav.NavigateTo($"/orders/{newId}");
+            }
+            else
+            {
+                await OrderService.UpdateAsync(_order);
+                Snackbar.Add("Order saved.", Severity.Success);
+                Nav.NavigateTo("/orders");
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+            _saving = false;
+        }
+    }
+
+    private void Cancel() => Nav.NavigateTo("/orders");
+}

@@ -5,6 +5,27 @@ revisit.
 
 ---
 
+## 2026-08-31 — M3 order builder + tests.
+
+**Decided:**
+- New and edit orders share one page (`OrderEdit.razor`) on routes
+  `/orders/new` and `/orders/{id}`; `Id is null` ⇒ new.
+- Order lines are edited inline in a `MudSimpleTable` (product select, quantity,
+  unit price, computed line total), not a per-line dialog.
+- `OrderService.UpdateAsync` loads the tracked order with its lines and
+  reconciles: remove lines absent from the incoming set, update matches by `Id`,
+  insert lines with `Id == 0`. `LineNumber` is re-sequenced on every save.
+- Order number generated server-side in `OrderService.CreateAsync` from
+  `OrderNumberGenerator` (max existing `EXP-{year}-` sequence + 1). The user
+  never edits it.
+- `CreateAsync` nulls each `line.Product` navigation before insert so EF treats
+  products as existing FKs, not new rows.
+- Added `tests/ExportDocGen.Tests` (xUnit) with a `SqliteTestFactory`
+  (in-memory SQLite, connection held open) implementing
+  `IDbContextFactory<AppDbContext>`.
+**Revisit if:** orders need issued-state locking, or line editing needs richer
+per-line data (discounts, snapshots) → move to a dedicated line dialog.
+
 ## 2026-08-31 — Global interactive render mode.
 
 **Decision:** `App.razor` sets `@rendermode="InteractiveServer"` on `<HeadOutlet>`
