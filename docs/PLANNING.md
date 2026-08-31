@@ -97,6 +97,12 @@ output.
         picking one of N document implementations (or one parametrised
         `ProformaInvoiceDocument` if the two layouts are close). The current M6
         layout becomes company #1's template.
+      - **Customer form: Payment Type selector** (managed choice, not free text —
+        options list TBD) alongside Incoterm. Both are per-customer defaults that
+        pre-fill the order and appear on the proforma.
+      - **Order form: bank account number** typed per order → shown in the
+        proforma bank block (SWIFT / bank name still from the seller company).
+        Pairs with per-company bank accounts on `SellerCompany`.
       Lands before / alongside M7.
 - [ ] **M7 — Packing list PDF + order list.** Packing list PDF (weights, cartons,
       dimensions, volume). Order list/search screen. Regenerate PDFs from a
