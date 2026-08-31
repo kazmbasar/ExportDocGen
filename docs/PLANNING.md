@@ -83,6 +83,21 @@ output.
       `dd.MM.yyyy`. `OrderDocumentService` + `GET /orders/{id}/proforma.pdf`;
       "Proforma PDF" buttons on the order list and editor. Added `Customer.TaxId`
       / `ContactPhone`. 3 tests.
+- [ ] **M6.5 — Multi-seller rebuild (planned 2026-08-31).** The group has **two
+      companies that export**. The user must **choose the sender (seller)
+      company** when creating an order, and the proforma is generated from *that
+      company's own template*. A second, differently-laid-out proforma sample is
+      coming for company #2. Scope to design once that sample is in hand:
+      - `SellerCompany` entity (name, tax id, address, phone/fax/email/website,
+        country of origin, bank details, letterhead, template selector) —
+        supersedes the single `CompanyProfile` config.
+      - `Order.SellerCompanyId` + a seller picker on the order builder. Decide:
+        per-company order-number sequences; customers shared vs. per-company.
+      - Template-aware proforma: a layout discriminator on `SellerCompany`
+        picking one of N document implementations (or one parametrised
+        `ProformaInvoiceDocument` if the two layouts are close). The current M6
+        layout becomes company #1's template.
+      Lands before / alongside M7.
 - [ ] **M7 — Packing list PDF + order list.** Packing list PDF (weights, cartons,
       dimensions, volume). Order list/search screen. Regenerate PDFs from a
       saved order.
