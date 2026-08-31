@@ -100,9 +100,12 @@ output.
       - **Customer form: Payment Type selector** (managed choice, not free text —
         options list TBD) alongside Incoterm. Both are per-customer defaults that
         pre-fill the order and appear on the proforma.
-      - **Order form: bank account number** typed per order → shown in the
-        proforma bank block (SWIFT / bank name still from the seller company).
-        Pairs with per-company bank accounts on `SellerCompany`.
+      - **Order form: free-text "bank details" field** (`string`, multi-line).
+        The two companies have 10+ accounts across banks/currencies, so this is
+        NOT structured — the user types the whole bank block and the proforma
+        renders it verbatim (line breaks preserved). May be pre-filled from a
+        per-seller-company default text. Replaces M6's structured
+        `CompanyProfile.Bank` for rendering.
       Lands before / alongside M7.
 - [ ] **M7 — Packing list PDF + order list.** Packing list PDF (weights, cartons,
       dimensions, volume). Order list/search screen. Regenerate PDFs from a
