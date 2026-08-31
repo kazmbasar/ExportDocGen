@@ -6,13 +6,16 @@ Excel/Word copy-paste.
 
 ## Status
 
-**M5 (Excel order import) complete.** Started 2026-08-31. Solution builds, runs,
-and has 25 passing tests. SQLite database, EF Core migrations, seed data, the
-MudBlazor UI shell, Customer/Product CRUD, the order builder, live per-line +
-order calculations (money total, net/gross weight, carton count, CBM), and
-**importing an order from a customer's `.xlsx` spreadsheet** (parse → match to
-the catalog → review screen → create) are all in place. Next: M6 — proforma
-invoice PDF. See [`docs/PLANNING.md`](docs/PLANNING.md).
+**M6 (Proforma invoice PDF) complete.** Started 2026-08-31. Solution builds,
+runs, and has 28 passing tests. SQLite database, EF Core migrations, seed data,
+the MudBlazor UI shell, Customer/Product CRUD, the order builder, live
+calculations, Excel order import, and a **proforma invoice PDF** per order
+(`GET /orders/{id}/proforma.pdf`, "Proforma PDF" buttons on the order list and
+editor; company header from `appsettings.json`) are all in place. Next: M7 —
+packing list PDF + order list/search. See [`docs/PLANNING.md`](docs/PLANNING.md).
+
+Fill in your company/bank details under `"CompanyProfile"` in
+`src/ExportDocGen/appsettings.json` before issuing real documents.
 
 ## Stack
 
@@ -72,7 +75,8 @@ ExportDocGen/
         ├── Program.cs          # DI, DbContext factory, MudBlazor, startup migrate + seed
         ├── Data/               # AppDbContext, Entities/, SeedData, CompanyProfile
         ├── Services/           # Customer/Product/Order/Calculation services, OrderNumberGenerator,
-        │                       #   ExcelOrderImportParser
+        │                       #   ExcelOrderImportParser, OrderDocumentService
+        ├── Documents/          # QuestPDF: ProformaInvoiceModel + ProformaInvoiceDocument
         ├── Migrations/         # EF Core migrations
         └── Components/
             ├── Layout/

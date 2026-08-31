@@ -74,8 +74,14 @@ output.
       quantities and prices before the order is created via `OrderService`.
       7 parser tests (against the two real FILTORQ sample files). See
       "Excel order import" below.
-- [ ] **M6 — Proforma invoice PDF.** QuestPDF document class renders a proper
-      proforma invoice from an order. Company header from config.
+- [x] **M6 — Proforma invoice PDF.** _(2026-08-31)_ `ProformaInvoiceDocument`
+      (QuestPDF) renders an A4 proforma from an order: seller header from
+      `CompanyProfile` config, buyer block, incoterm/currency/payment/country of
+      origin, line-items table (part, description, HS code, qty, unit price,
+      amount), totals (amount, net/gross weight, cartons, CBM), bank details.
+      `OrderDocumentService` + a `GET /orders/{id}/proforma.pdf` endpoint;
+      "Proforma PDF" buttons on the order list and editor. English/invariant
+      formatting regardless of server locale. 3 tests.
 - [ ] **M7 — Packing list PDF + order list.** Packing list PDF (weights, cartons,
       dimensions, volume). Order list/search screen. Regenerate PDFs from a
       saved order.
@@ -127,9 +133,10 @@ widening the price columns is a later change if needed.
 
 ## Risks / unknowns
 
-- **Document layout requirements** — the exact fields and layout the company /
-  customs / banks expect on a proforma invoice. Mitigation: get a real example
-  document from Kazim before M5.
+- **Document layout requirements** — M6 renders a standard proforma layout; the
+  exact fields/wording the company's customs broker and bank expect may differ.
+  Mitigation: Kazim to review against a real issued proforma and flag changes
+  (all layout lives in `ProformaInvoiceDocument`).
 - **Carton / packing math** — whether orders ship in whole cartons only, or
   mixed. Assumption for MVP: quantity is rounded up to whole cartons per line;
   revisit if wrong.

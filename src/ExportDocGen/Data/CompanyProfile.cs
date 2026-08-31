@@ -9,10 +9,17 @@ public class CompanyProfile
     public const string SectionName = "CompanyProfile";
 
     public string Name { get; set; } = "«Company name»";
-    public string[] AddressLines { get; set; } = ["«street»", "«city, country»"];
+
+    // Empty by default: the .NET configuration binder *appends* to a non-empty
+    // array, so a default here would duplicate the appsettings.json values.
+    public string[] AddressLines { get; set; } = [];
     public string TaxId { get; set; } = "«tax id»";
     public string Phone { get; set; } = "«phone»";
     public string Email { get; set; } = "«email»";
+
+    /// <summary>Shown as "Country of origin" on export documents.</summary>
+    public string CountryOfOrigin { get; set; } = "Türkiye";
+
     public BankDetails Bank { get; set; } = new();
 
     /// <summary>Path relative to the app root, e.g. "wwwroot/company-logo.png".</summary>

@@ -5,6 +5,35 @@ revisit.
 
 ---
 
+## 2026-08-31 — M6 proforma invoice PDF.
+
+**Decided:**
+- **`ProformaInvoiceDocument` (QuestPDF) is pure layout** over a flat
+  `ProformaInvoiceModel`. `ProformaInvoiceModel.From(order, calculation,
+  company)` does the mapping; `OrderDocumentService` is the only piece that
+  touches the DB / `IOptions<CompanyProfile>`. This keeps the document
+  unit-testable and previewable without a host.
+- **Delivery is a minimal-API endpoint**, `GET /orders/{id}/proforma.pdf`, not a
+  Blazor page or a `NavigationManager` download dance — a plain URL the order
+  screens open in a new tab, and easy to `curl`. Missing order → 404.
+- **Amounts on the document = the `CalculationService` line/order totals**
+  (rounded per line, summed), positionally paired with the order's lines ordered
+  by `LineNumber`. The proforma never recomputes money itself.
+- **Line rows show:** #, part number, description, HS code, quantity, unit price
+  (3 dp), amount (2 dp). **Totals block:** amount + currency, net weight, gross
+  weight (ship gross, incl. carton tare), cartons, volume (CBM). Plus incoterm,
+  currency, payment terms, country of origin, buyer, seller, bank details.
+- **Invariant-culture formatting** for every number and date — the server runs
+  in `tr-TR` and an export document must read in English (`7.40`, not `7,40`;
+  `31 Aug 2026`, not `31 Ağu 2026`).
+- **`CompanyProfile` collection defaults are empty** (`AddressLines = []`): the
+  .NET config binder appends to a non-empty array, which was duplicating the
+  `appsettings.json` lines onto the PDF.
+- Added `CompanyProfile.CountryOfOrigin` (default "Türkiye").
+**Revisit if:** the company's customs broker/bank need different fields, wording,
+or a specific template → all layout is in `ProformaInvoiceDocument`; or a logo /
+signature block / multi-currency is required.
+
 ## 2026-08-31 — M5 Excel order import.
 
 **Decided:**

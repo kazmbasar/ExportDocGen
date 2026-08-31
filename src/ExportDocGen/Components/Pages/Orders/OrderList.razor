@@ -36,6 +36,10 @@
         </TemplateColumn>
         <TemplateColumn Title="" Sortable="false" Filterable="false" CellClass="d-flex justify-end">
             <CellTemplate>
+                <MudTooltip Text="Proforma invoice PDF">
+                    <MudIconButton Icon="@Icons.Material.Filled.PictureAsPdf" Size="Size.Small"
+                                   Href="@($"/orders/{context.Item.Id}/proforma.pdf")" Target="_blank" />
+                </MudTooltip>
                 <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
                                Href="@($"/orders/{context.Item.Id}")" />
                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"

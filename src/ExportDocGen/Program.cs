@@ -32,6 +32,7 @@ builder.Services.AddScoped<ProductService>();
 builder.Services.AddScoped<OrderNumberGenerator>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<CalculationService>();
+builder.Services.AddScoped<OrderDocumentService>();
 builder.Services.AddSingleton<ExcelOrderImportParser>();
 
 // QuestPDF Community license (free for companies under the revenue threshold).
@@ -63,5 +64,14 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+// Generated documents (opened in a new browser tab from the order screens).
+app.MapGet("/orders/{id:int}/proforma.pdf", async (int id, OrderDocumentService documents) =>
+{
+    var pdf = await documents.BuildProformaAsync(id);
+    return pdf is null
+        ? Results.NotFound()
+        : Results.File(pdf.Bytes, GeneratedDocument.PdfContentType, pdf.FileName);
+});
 
 app.Run();

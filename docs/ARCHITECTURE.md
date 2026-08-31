@@ -42,27 +42,30 @@ src/ExportDocGen/
 │   ├── OrderService.cs           # ✅ M3 — list/get/create/update/delete + line reconcile
 │   ├── OrderNumberGenerator.cs   # ✅ M3 — "EXP-{year}-{seq:0000}", per-year sequence
 │   ├── CalculationService.cs     # ✅ M4 — pure; line + order money/weight/carton/CBM
-│   └── ExcelOrderImportParser.cs # ✅ M5 — pure; reads a customer .xlsx into line rows
+│   ├── ExcelOrderImportParser.cs # ✅ M5 — pure; reads a customer .xlsx into line rows
+│   └── OrderDocumentService.cs   # ✅ M6 — loads order + calc + company profile → PDF bytes
 ├── Documents/                    # QuestPDF IDocument classes
-│   ├── ProformaInvoiceDocument.cs
-│   ├── PackingListDocument.cs
-│   └── Shared/                   # header/footer components, styles
+│   ├── ProformaInvoiceModel.cs   # ✅ M6 — flat print model + From(order, calc, company)
+│   ├── ProformaInvoiceDocument.cs# ✅ M6 — pure A4 layout
+│   └── PackingListDocument.cs    # (M7)
 ├── Components/
 │   ├── Pages/
 │   │   ├── Customers/            # ✅ CustomerList + CustomerDialog
 │   │   ├── Products/             # ✅ ProductList + ProductDialog
 │   │   └── Orders/               # ✅ OrderList + OrderEdit (new+edit) + OrderImport (/orders/import)
 │   └── Layout/
-└── Migrations/                   # EF Core generated
+├── Migrations/                   # EF Core generated
+└── Program.cs                    # + GET /orders/{id}/proforma.pdf minimal-API endpoint
 ```
 
 `tests/ExportDocGen.Tests/` — xUnit. `SqliteTestFactory` gives each test an
 isolated in-memory SQLite database (connection kept open) behind
 `IDbContextFactory<AppDbContext>`, so FK/cascade/unique-index behaviour is real.
-Current coverage (25 tests): `OrderService` round-trip + line reconciliation,
+Current coverage (28 tests): `OrderService` round-trip + line reconciliation,
 order-number sequencing, delete guards, `CalculationService` line/order
-formulas, carton rounding, money rounding, and `ExcelOrderImportParser` against
-the two real FILTORQ sample workbooks (row count, totals-row cut-off, code
+formulas, carton rounding, money rounding, the proforma model/document/service
+(mapping, `%PDF` output, saved-order round-trip), and `ExcelOrderImportParser`
+against the two real FILTORQ sample workbooks (row count, totals-row cut-off, code
 normalization, bad-cell flagging, header detection below a title row).
 
 ## Key conventions
@@ -83,23 +86,18 @@ normalization, bad-cell flagging, header detection below a title row).
 - **Money & measures:** `decimal` everywhere; never `double`. Configure SQLite
   decimal precision in entity configurations.
 - **Computed values are never persisted** — always via `CalculationService`.
-- **Company header** comes from `CompanyProfile` config bound in `Program.cs`:
-
-  ```json
-  "CompanyProfile": {
-    "Name": "«Company name»",
-    "AddressLines": ["«street»", "«city, country»"],
-    "TaxId": "«VKN»",
-    "Phone": "«phone»",
-    "Email": "«email»",
-    "Bank": { "BeneficiaryName": "«»", "Iban": "«»", "Swift": "«»", "BankName": "«»" },
-    "LogoPath": "wwwroot/company-logo.png"
-  }
-  ```
-
-- **PDF download:** a minimal API endpoint or Blazor `NavigationManager` to a
-  handler returning `application/pdf`, e.g.
-  `GET /orders/{id}/proforma.pdf` and `/orders/{id}/packing-list.pdf`.
+- **Company header** comes from `CompanyProfile` config bound in `Program.cs`
+  (`appsettings.json` → `"CompanyProfile"`: `Name`, `AddressLines`, `TaxId`,
+  `Phone`, `Email`, `CountryOfOrigin`, `Bank`, `LogoPath`). Fill in real values
+  there — no code change. Collection defaults in the POCO are empty on purpose
+  (the config binder *appends* to a non-empty array).
+- **PDF download:** `GET /orders/{id}/proforma.pdf` (minimal-API endpoint in
+  `Program.cs`) → `OrderDocumentService.BuildProformaAsync` → 404 if the order
+  is missing, else `application/pdf`. The order screens link to it with
+  `target="_blank"`. `/orders/{id}/packing-list.pdf` follows in M7.
+- **Document formatting:** QuestPDF document classes format all numbers and
+  dates with `CultureInfo.InvariantCulture` — export documents are in English
+  regardless of the server locale.
 
 ## Database location
 
