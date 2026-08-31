@@ -5,34 +5,46 @@ revisit.
 
 ---
 
-## 2026-08-31 — M6 proforma invoice PDF.
+## 2026-08-31 — M6b: proforma matched to the company's real template.
+
+Kazim provided a real issued proforma (`leo motors AUGUST ORDER.pdf`). The M6
+layout was reworked to match it.
 
 **Decided:**
-- **`ProformaInvoiceDocument` (QuestPDF) is pure layout** over a flat
-  `ProformaInvoiceModel`. `ProformaInvoiceModel.From(order, calculation,
-  company)` does the mapping; `OrderDocumentService` is the only piece that
-  touches the DB / `IOptions<CompanyProfile>`. This keeps the document
-  unit-testable and previewable without a host.
-- **Delivery is a minimal-API endpoint**, `GET /orders/{id}/proforma.pdf`, not a
-  Blazor page or a `NavigationManager` download dance — a plain URL the order
-  screens open in a new tab, and easy to `curl`. Missing order → 404.
-- **Amounts on the document = the `CalculationService` line/order totals**
-  (rounded per line, summed), positionally paired with the order's lines ordered
-  by `LineNumber`. The proforma never recomputes money itself.
-- **Line rows show:** #, part number, description, HS code, quantity, unit price
-  (3 dp), amount (2 dp). **Totals block:** amount + currency, net weight, gross
-  weight (ship gross, incl. carton tare), cartons, volume (CBM). Plus incoterm,
-  currency, payment terms, country of origin, buyer, seller, bank details.
-- **Invariant-culture formatting** for every number and date — the server runs
-  in `tr-TR` and an export document must read in English (`7.40`, not `7,40`;
-  `31 Aug 2026`, not `31 Ağu 2026`).
-- **`CompanyProfile` collection defaults are empty** (`AddressLines = []`): the
-  .NET config binder appends to a non-empty array, which was duplicating the
-  `appsettings.json` lines onto the PDF.
-- Added `CompanyProfile.CountryOfOrigin` (default "Türkiye").
-**Revisit if:** the company's customs broker/bank need different fields, wording,
-or a specific template → all layout is in `ProformaInvoiceDocument`; or a logo /
-signature block / multi-currency is required.
+- **The company letterhead is a full-page A4 PNG used as the QuestPDF page
+  background** (`wwwroot/proforma-letterhead.png`, extracted and de-masked from
+  the sample PDF). Header (logo, tagline) and footer (address, tel/fax, e-mail,
+  web) are baked into that image, so the document renders only the middle
+  content with large top/bottom margins. `CompanyProfile.LetterheadPath`; when
+  unset the document falls back to a plain text header/footer.
+- **Layout follows the template:** centered "PROFORMA INVOICE"; a bordered
+  buyer/invoice box (`Name` + tax id | `Date`; `P/I NO` | `Tel`; `Email` |
+  `Fax`; `Address`); `DELIVERY TERM` / `PAYMENT`; a centered
+  `Bank Detail (<CUR>):` block with the labels `Company Name / Our Bank /
+  Swift Code / IBAN NO`; a **page break**; then the line-items table with
+  columns `FILTORQ CODE | QUANTITY | PRICE | TOTAL` and a **gold grand-total
+  box** spanning the price+total columns.
+- **The proforma drops** HS code, description, per-line/summary weights, carton
+  and CBM figures, and country of origin — the company's template has none of
+  them. `CalculationService` still produces them for the packing list (M7).
+- **Money is formatted the company's way, not invariant English:** currency
+  symbol prefix + comma decimals + space thousands (`$3 624,88`). Dates are
+  `dd.MM.yyyy`. (Reverses the M6 "always English" choice for this document.)
+- **`P/I NO` shows the order number** (`EXP-2026-nnnn`). The sample uses a
+  separate manual sequence (`27326/2`); a dedicated proforma-number field is a
+  later change if needed.
+- **New fields:** `Customer.TaxId`, `Customer.ContactPhone` (migration
+  `AddCustomerTaxIdAndPhone`, added to the customer dialog + seed);
+  `CompanyProfile.Fax` / `Website` / `LetterheadPath`. `appsettings.json` now
+  carries the real Filtorq company + Ziraat bank details.
+- `OrderDocumentService` resolves asset paths against
+  `IHostEnvironment.ContentRootPath` (so `wwwroot/...` works under `dotnet run`
+  and when published) and passes bytes into the pure model.
+- The PDF endpoint now wraps generation in try/catch (→ `Problem`) and sends
+  `Content-Disposition: inline` so the links preview instead of downloading.
+**Revisit if:** a distinct proforma-number scheme is needed; the table needs
+description/HS code for customs; or the letterhead art is updated (replace the
+PNG).
 
 ## 2026-08-31 — M5 Excel order import.
 

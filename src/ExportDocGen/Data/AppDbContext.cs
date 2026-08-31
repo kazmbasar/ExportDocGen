@@ -26,6 +26,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(c => c.Name).HasMaxLength(200).IsRequired();
             e.Property(c => c.Country).HasMaxLength(100).IsRequired();
             e.Property(c => c.DefaultCurrency).HasMaxLength(3).IsRequired();
+            e.Property(c => c.TaxId).HasMaxLength(50);
+            e.Property(c => c.ContactPhone).HasMaxLength(50);
         });
 
         model.Entity<Product>(e =>

@@ -46,8 +46,10 @@ src/ExportDocGen/
 │   └── OrderDocumentService.cs   # ✅ M6 — loads order + calc + company profile → PDF bytes
 ├── Documents/                    # QuestPDF IDocument classes
 │   ├── ProformaInvoiceModel.cs   # ✅ M6 — flat print model + From(order, calc, company)
-│   ├── ProformaInvoiceDocument.cs# ✅ M6 — pure A4 layout
+│   ├── ProformaInvoiceDocument.cs# ✅ M6 — pure A4 layout, matched to the real template
 │   └── PackingListDocument.cs    # (M7)
+├── wwwroot/
+│   └── proforma-letterhead.png   # ✅ M6 — full-page A4 letterhead (PDF background)
 ├── Components/
 │   ├── Pages/
 │   │   ├── Customers/            # ✅ CustomerList + CustomerDialog
@@ -86,18 +88,25 @@ normalization, bad-cell flagging, header detection below a title row).
 - **Money & measures:** `decimal` everywhere; never `double`. Configure SQLite
   decimal precision in entity configurations.
 - **Computed values are never persisted** — always via `CalculationService`.
-- **Company header** comes from `CompanyProfile` config bound in `Program.cs`
+- **Company profile** comes from `CompanyProfile` config bound in `Program.cs`
   (`appsettings.json` → `"CompanyProfile"`: `Name`, `AddressLines`, `TaxId`,
-  `Phone`, `Email`, `CountryOfOrigin`, `Bank`, `LogoPath`). Fill in real values
-  there — no code change. Collection defaults in the POCO are empty on purpose
-  (the config binder *appends* to a non-empty array).
+  `Phone`, `Fax`, `Email`, `Website`, `CountryOfOrigin`, `Bank`,
+  `LetterheadPath`, `LogoPath`). Fill in real values there — no code change.
+  Collection defaults in the POCO are empty on purpose (the config binder
+  *appends* to a non-empty array).
+- **Proforma letterhead:** `CompanyProfile.LetterheadPath` points at a full-page
+  A4 image (default `wwwroot/proforma-letterhead.png`) used as the PDF page
+  background — logo + footer are part of that art. `OrderDocumentService`
+  resolves asset paths against `IHostEnvironment.ContentRootPath` and passes
+  bytes into the pure document model. No letterhead → plain text header/footer.
 - **PDF download:** `GET /orders/{id}/proforma.pdf` (minimal-API endpoint in
-  `Program.cs`) → `OrderDocumentService.BuildProformaAsync` → 404 if the order
-  is missing, else `application/pdf`. The order screens link to it with
+  `Program.cs`) → `OrderDocumentService.BuildProformaAsync` → 404 for a missing
+  order, `Problem` on a render error, else `application/pdf` with
+  `Content-Disposition: inline`. The order screens link to it with
   `target="_blank"`. `/orders/{id}/packing-list.pdf` follows in M7.
-- **Document formatting:** QuestPDF document classes format all numbers and
-  dates with `CultureInfo.InvariantCulture` — export documents are in English
-  regardless of the server locale.
+- **Document formatting:** the proforma matches the company's own template —
+  currency-symbol prefix, comma decimals, space thousands (`$3 624,88`), dates
+  `dd.MM.yyyy`.
 
 ## Database location
 
@@ -131,3 +140,23 @@ MVP. Local run is `dotnet run` or a published self-contained binary.
 
 See `docs/PLANNING.md` → "Excel order import (M5) — as built" for the confirmed
 spreadsheet layout and scope boundaries.
+
+## Proforma invoice (M6) — done
+
+- **`Documents/ProformaInvoiceModel.cs`** — flat, print-ready record;
+  `From(order, calculation, company, letterhead?, logo?)` maps a saved order +
+  its `CalculationService` totals + `CompanyProfile` into it. No DB/config/IO.
+- **`Documents/ProformaInvoiceDocument.cs`** — pure QuestPDF layout matched to
+  the company's real template (letterhead background, buyer/invoice box,
+  delivery & payment, `Bank Detail (<CUR>)` block, page break, then the
+  `FILTORQ CODE | QUANTITY | PRICE | TOTAL` table with a gold grand-total box).
+  Money as `$3 624,88`; dates `dd.MM.yyyy`. Falls back to a text header/footer
+  when there is no letterhead.
+- **`Services/OrderDocumentService.cs`** — the only DB/config/IO piece: loads
+  the order, runs `CalculationService`, reads the letterhead/logo bytes
+  (resolved against `IHostEnvironment.ContentRootPath`), renders, returns
+  `GeneratedDocument(bytes, fileName)`.
+- **Endpoint:** `GET /orders/{id}/proforma.pdf` in `Program.cs`.
+- The proforma intentionally omits HS code, descriptions and all weight/carton/
+  CBM figures — the company's template has none. Those stay in
+  `CalculationService` for the M7 packing list.

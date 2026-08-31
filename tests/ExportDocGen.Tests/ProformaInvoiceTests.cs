@@ -3,6 +3,8 @@ using ExportDocGen.Data;
 using ExportDocGen.Data.Entities;
 using ExportDocGen.Documents;
 using ExportDocGen.Services;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using QuestPDF.Fluent;
 
@@ -10,12 +12,11 @@ namespace ExportDocGen.Tests;
 
 public class ProformaInvoiceTests
 {
-    private static Product Filter(string part, string hs) => new()
+    private static Product Filter(string part) => new()
     {
         Id = part.GetHashCode() & 0x7fffffff,
         PartNumber = part,
         Description = $"{part} filter",
-        HsCode = hs,
         NetWeightKg = 0.5m,
         GrossWeightKg = 0.6m,
         UnitsPerCarton = 10,
@@ -27,22 +28,25 @@ public class ProformaInvoiceTests
 
     private static Order SampleOrder()
     {
-        var af = Filter("AF-1", "8421.31");
-        var of = Filter("OF-2", "8421.23");
+        var af = Filter("AF-1");
+        var of = Filter("OF-2");
         return new Order
         {
             OrderNumber = "EXP-2026-0007",
             OrderDate = new DateOnly(2026, 8, 31),
-            Incoterm = "FOB Izmir",
+            Incoterm = "EXW Denizli",
             Currency = "USD",
-            PaymentTerms = "30% advance, 70% before shipment",
+            PaymentTerms = "100% Prepayment",
             Customer = new Customer
             {
-                Name = "Gulf Auto Spare Parts LLC",
-                AddressLine1 = "Deira",
-                City = "Dubai",
-                Country = "United Arab Emirates",
-                ContactName = "A. Rahman",
+                Name = "LTD LEOMOTORS",
+                TaxId = "412745187",
+                AddressLine1 = "Khoravs N4",
+                City = "Kutaisi",
+                Country = "Georgia",
+                ContactName = "L. Lekvinadze",
+                ContactEmail = "buyer@example.com",
+                ContactPhone = "+995 598 77 67 99",
             },
             Lines =
             {
@@ -52,40 +56,56 @@ public class ProformaInvoiceTests
         };
     }
 
+    private static CompanyProfile Company() => new()
+    {
+        Name = "Filtorq Filtre A.Ş.",
+        Bank = new BankDetails
+        {
+            BeneficiaryName = "Filtorq Filtre A.Ş.",
+            BankName = "Ziraat Bankası",
+            Swift = "TCZBTR2AXXX",
+            Iban = "TR62 0001 0020 6383 4792 2750 06",
+        },
+    };
+
     private static OrderCalculation Calculate(Order order) =>
         new CalculationService().CalculateOrder(order.Lines
             .OrderBy(l => l.LineNumber)
             .Select(l => (l.Quantity, l.UnitPrice, l.Product!)));
 
     [Fact]
-    public void Model_maps_order_customer_and_totals()
+    public void Model_maps_buyer_invoice_and_lines()
+    {
+        var order = SampleOrder();
+
+        var model = ProformaInvoiceModel.From(order, Calculate(order), Company());
+
+        Assert.Equal("EXP-2026-0007", model.InvoiceNumber);
+        Assert.Equal("LTD LEOMOTORS", model.BuyerName);
+        Assert.Equal("412745187", model.BuyerTaxId);
+        Assert.Equal("+995 598 77 67 99", model.BuyerPhone);
+        Assert.Contains("Georgia", model.BuyerAddress);
+        Assert.Equal("EXW Denizli", model.Incoterm);
+        Assert.Equal(2, model.Lines.Count);
+        Assert.Equal("AF-1", model.Lines[0].Code);
+        Assert.Equal(100 * 7.4m + 250 * 2.1m, model.TotalAmount);
+        Assert.Equal("TCZBTR2AXXX", model.Bank.Swift);
+    }
+
+    [Fact]
+    public void Document_renders_a_pdf_with_and_without_a_letterhead()
     {
         var order = SampleOrder();
         var calc = Calculate(order);
 
-        var model = ProformaInvoiceModel.From(order, calc, new CompanyProfile());
+        var plain = new ProformaInvoiceDocument(
+            ProformaInvoiceModel.From(order, calc, Company())).GeneratePdf();
+        Assert.True(plain.Length > 1000);
+        Assert.Equal("%PDF-", Encoding.ASCII.GetString(plain, 0, 5));
 
-        Assert.Equal("EXP-2026-0007", model.InvoiceNumber);
-        Assert.Equal("Gulf Auto Spare Parts LLC", model.BuyerName);
-        Assert.Contains("Dubai", model.BuyerAddress);
-        Assert.Equal("FOB Izmir", model.Incoterm);
-        Assert.Equal(2, model.Lines.Count);
-        Assert.Equal("8421.31", model.Lines[0].HsCode);
-        Assert.Equal(100 * 7.4m + 250 * 2.1m, model.TotalAmount);
-        Assert.Equal(calc.TotalGrossWeightKg, model.TotalGrossWeightKg);
-        Assert.Equal("Türkiye", model.CountryOfOrigin);
-    }
-
-    [Fact]
-    public void Document_renders_a_pdf()
-    {
-        var order = SampleOrder();
-        var model = ProformaInvoiceModel.From(order, Calculate(order), new CompanyProfile());
-
-        var bytes = new ProformaInvoiceDocument(model).GeneratePdf();
-
-        Assert.True(bytes.Length > 1000);
-        Assert.Equal("%PDF-", Encoding.ASCII.GetString(bytes, 0, 5));
+        var withLetterhead = new ProformaInvoiceDocument(
+            ProformaInvoiceModel.From(order, calc, Company(), letterhead: FakePng())).GeneratePdf();
+        Assert.Equal("%PDF-", Encoding.ASCII.GetString(withLetterhead, 0, 5));
     }
 
     [Fact]
@@ -97,7 +117,7 @@ public class ProformaInvoiceTests
 
         var customer = await customers.CreateAsync(new Customer
         {
-            Name = "Muster GmbH", AddressLine1 = "Industriestr. 1",
+            Name = "Muster GmbH", TaxId = "DE123", AddressLine1 = "Industriestr. 1",
             City = "Hamburg", Country = "Germany", DefaultCurrency = "EUR",
         });
         Product product;
@@ -120,7 +140,8 @@ public class ProformaInvoiceTests
         });
 
         var service = new OrderDocumentService(
-            orders, new CalculationService(), Options.Create(new CompanyProfile()));
+            orders, new CalculationService(), Options.Create(new CompanyProfile()),
+            new TestHostEnvironment());
 
         var doc = await service.BuildProformaAsync(id);
 
@@ -129,5 +150,17 @@ public class ProformaInvoiceTests
         Assert.Equal("%PDF-", Encoding.ASCII.GetString(doc.Bytes, 0, 5));
 
         Assert.Null(await service.BuildProformaAsync(999));
+    }
+
+    // A 1x1 transparent PNG.
+    private static byte[] FakePng() => Convert.FromBase64String(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==");
+
+    private sealed class TestHostEnvironment : IHostEnvironment
+    {
+        public string ApplicationName { get; set; } = "Tests";
+        public string EnvironmentName { get; set; } = "Test";
+        public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
+        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
     }
 }

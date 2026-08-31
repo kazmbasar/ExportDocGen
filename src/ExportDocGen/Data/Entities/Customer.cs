@@ -6,6 +6,11 @@ public class Customer
     public int Id { get; set; }
 
     public string Name { get; set; } = "";
+
+    /// <summary>Buyer tax / company registration number, shown next to the name
+    /// on the proforma invoice (e.g. "412745187").</summary>
+    public string? TaxId { get; set; }
+
     public string AddressLine1 { get; set; } = "";
     public string? AddressLine2 { get; set; }
     public string? City { get; set; }
@@ -20,6 +25,9 @@ public class Customer
 
     public string? ContactName { get; set; }
     public string? ContactEmail { get; set; }
+
+    /// <summary>Buyer phone number, shown on the proforma invoice.</summary>
+    public string? ContactPhone { get; set; }
 
     public List<Order> Orders { get; set; } = [];
 }

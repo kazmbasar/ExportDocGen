@@ -9,13 +9,16 @@ Excel/Word copy-paste.
 **M6 (Proforma invoice PDF) complete.** Started 2026-08-31. Solution builds,
 runs, and has 28 passing tests. SQLite database, EF Core migrations, seed data,
 the MudBlazor UI shell, Customer/Product CRUD, the order builder, live
-calculations, Excel order import, and a **proforma invoice PDF** per order
+calculations, Excel order import, and a **proforma invoice PDF** per order —
+laid out like the company's real template, letterhead and all
 (`GET /orders/{id}/proforma.pdf`, "Proforma PDF" buttons on the order list and
-editor; company header from `appsettings.json`) are all in place. Next: M7 —
-packing list PDF + order list/search. See [`docs/PLANNING.md`](docs/PLANNING.md).
+editor) — are all in place. Next: M7 — packing list PDF + order list/search.
+See [`docs/PLANNING.md`](docs/PLANNING.md).
 
-Fill in your company/bank details under `"CompanyProfile"` in
-`src/ExportDocGen/appsettings.json` before issuing real documents.
+The company/bank details and letterhead under `"CompanyProfile"` in
+`src/ExportDocGen/appsettings.json` are set for Filtorq; the buyer tax number
+placeholder still needs filling in. Swap `wwwroot/proforma-letterhead.png` for a
+higher-resolution letterhead when available.
 
 ## Stack
 

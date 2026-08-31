@@ -13,6 +13,7 @@ and dimensions as `decimal`. Times stored as UTC.
 |-------|------|-------|
 | Id | int | PK, identity |
 | Name | string | required |
+| TaxId | string? | buyer tax / registration no. — shown on the proforma |
 | AddressLine1 | string | required |
 | AddressLine2 | string? | |
 | City | string? | |
@@ -22,6 +23,7 @@ and dimensions as `decimal`. Times stored as UTC.
 | DefaultCurrency | string | ISO 4217, e.g. "USD", "EUR" — default "USD" |
 | ContactName | string? | |
 | ContactEmail | string? | |
+| ContactPhone | string? | shown on the proforma |
 
 ### Product
 

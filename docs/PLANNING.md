@@ -75,13 +75,14 @@ output.
       7 parser tests (against the two real FILTORQ sample files). See
       "Excel order import" below.
 - [x] **M6 — Proforma invoice PDF.** _(2026-08-31)_ `ProformaInvoiceDocument`
-      (QuestPDF) renders an A4 proforma from an order: seller header from
-      `CompanyProfile` config, buyer block, incoterm/currency/payment/country of
-      origin, line-items table (part, description, HS code, qty, unit price,
-      amount), totals (amount, net/gross weight, cartons, CBM), bank details.
-      `OrderDocumentService` + a `GET /orders/{id}/proforma.pdf` endpoint;
-      "Proforma PDF" buttons on the order list and editor. English/invariant
-      formatting regardless of server locale. 3 tests.
+      (QuestPDF) renders an A4 proforma from an order, laid out like the
+      company's real template (`leo motors AUGUST ORDER.pdf`): full-page
+      letterhead background, buyer/invoice box, delivery & payment terms,
+      `Bank Detail (<CUR>)` block, page break, then a `FILTORQ CODE | QUANTITY |
+      PRICE | TOTAL` table with a gold grand-total box. Money `$3 624,88`, dates
+      `dd.MM.yyyy`. `OrderDocumentService` + `GET /orders/{id}/proforma.pdf`;
+      "Proforma PDF" buttons on the order list and editor. Added `Customer.TaxId`
+      / `ContactPhone`. 3 tests.
 - [ ] **M7 — Packing list PDF + order list.** Packing list PDF (weights, cartons,
       dimensions, volume). Order list/search screen. Regenerate PDFs from a
       saved order.

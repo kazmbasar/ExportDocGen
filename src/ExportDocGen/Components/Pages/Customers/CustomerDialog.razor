@@ -5,9 +5,13 @@
     <DialogContent>
         <MudForm @ref="_form" Model="Model">
             <MudGrid>
-                <MudItem xs="12">
+                <MudItem xs="8">
                     <MudTextField @bind-Value="Model.Name" Label="Company name" Required="true"
                                   RequiredError="Name is required" />
+                </MudItem>
+                <MudItem xs="4">
+                    <MudTextField @bind-Value="Model.TaxId" Label="Tax / reg. no."
+                                  HelperText="Shown on the proforma" />
                 </MudItem>
                 <MudItem xs="12">
                     <MudTextField @bind-Value="Model.AddressLine1" Label="Address line 1" Required="true"
@@ -36,12 +40,15 @@
                                   Validation="@(new Func<string, string?>(ValidateCurrency))"
                                   HelperText="ISO code, e.g. USD" />
                 </MudItem>
-                <MudItem xs="6">
+                <MudItem xs="4">
                     <MudTextField @bind-Value="Model.ContactName" Label="Contact name" />
                 </MudItem>
-                <MudItem xs="6">
+                <MudItem xs="4">
                     <MudTextField @bind-Value="Model.ContactEmail" Label="Contact email"
                                   Validation="@(new Func<string, string?>(ValidateEmail))" />
+                </MudItem>
+                <MudItem xs="4">
+                    <MudTextField @bind-Value="Model.ContactPhone" Label="Contact phone" />
                 </MudItem>
             </MudGrid>
         </MudForm>

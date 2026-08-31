@@ -6,17 +6,35 @@ using QuestPDF.Infrastructure;
 namespace ExportDocGen.Documents;
 
 /// <summary>Renders a <see cref="ProformaInvoiceModel"/> as an A4 proforma
-/// invoice. Pure layout — no database or configuration access, so it can be
-/// unit-tested and previewed directly.</summary>
+/// invoice laid out like the company's own template: a full-page letterhead
+/// background, the buyer / invoice box, delivery &amp; payment terms, the bank
+/// block, then a page break and the line-items table with a highlighted grand
+/// total. Pure layout — no database or configuration access.</summary>
 public sealed class ProformaInvoiceDocument(ProformaInvoiceModel model) : IDocument
 {
-    // Export documents are in English regardless of the server's locale.
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
 
-    private static readonly Color Rule = Colors.Grey.Lighten1;
-    private static readonly Color FaintRule = Colors.Grey.Lighten2;
-    private static readonly Color HeadFill = Colors.Grey.Lighten3;
-    private static readonly Color Muted = Colors.Grey.Darken1;
+    // "$3 624,88" — currency symbol, non-breaking-space groups, comma decimals,
+    // matching the company's existing documents.
+    private static readonly NumberFormatInfo Money = new()
+    {
+        NumberDecimalSeparator = ",",
+        NumberGroupSeparator = " ",
+        NumberDecimalDigits = 2,
+    };
+
+    private static readonly Color Ink = Color.FromHex("#1A1A1A");
+    private static readonly Color Rule = Color.FromHex("#8A8A8A");
+    private static readonly Color FaintRule = Color.FromHex("#CFCFCF");
+    private static readonly Color HeadGreen = Color.FromHex("#5C8A2C");
+    private static readonly Color Gold = Color.FromHex("#F2A900");
+
+    private bool HasLetterhead => model.Letterhead is { Length: > 0 };
+
+    private bool HasBank =>
+        !string.IsNullOrWhiteSpace(model.Bank.Iban)
+        || !string.IsNullOrWhiteSpace(model.Bank.Swift)
+        || !string.IsNullOrWhiteSpace(model.Bank.BankName);
 
     public DocumentMetadata GetMetadata() => new()
     {
@@ -27,209 +45,193 @@ public sealed class ProformaInvoiceDocument(ProformaInvoiceModel model) : IDocum
     public void Compose(IDocumentContainer container) => container.Page(page =>
     {
         page.Size(PageSizes.A4);
-        page.Margin(1.6f, Unit.Centimetre);
-        page.DefaultTextStyle(t => t.FontSize(9).LineHeight(1.25f));
+        page.DefaultTextStyle(t => t.FontSize(10).FontColor(Ink).LineHeight(1.2f));
 
-        page.Header().Element(Header);
-        page.Content().PaddingVertical(14).Element(Body);
-        page.Footer().Element(Footer);
-    });
-
-    private void Header(IContainer container) => container.Column(col =>
-    {
-        col.Item().Row(row =>
+        if (HasLetterhead)
         {
-            row.RelativeItem().Column(seller =>
-            {
-                if (model.SellerLogoPath is { } logo)
-                    seller.Item().PaddingBottom(6).Height(42).Image(logo).FitHeight();
+            // Clear the letterhead's header band (logo + tagline) and footer bar.
+            page.MarginTop(4.6f, Unit.Centimetre);
+            page.MarginBottom(2.7f, Unit.Centimetre);
+            page.MarginHorizontal(1.9f, Unit.Centimetre);
+            page.Background().Image(model.Letterhead!).FitArea();
+        }
+        else
+        {
+            page.Margin(1.8f, Unit.Centimetre);
+            page.Header().Element(FallbackHeader);
+            page.Footer().Element(FallbackFooter);
+        }
 
-                seller.Item().Text(model.SellerName).FontSize(13).Bold();
-                foreach (var l in model.SellerAddress)
-                    seller.Item().Text(l);
-                seller.Item().PaddingTop(2).Text(t =>
-                {
-                    t.Span("Tax ID: ").SemiBold();
-                    t.Span(model.SellerTaxId);
-                });
-                seller.Item().Text($"{model.SellerPhone}   {model.SellerEmail}");
-            });
-
-            row.ConstantItem(210).Column(box =>
-            {
-                box.Item().AlignRight().Text("PROFORMA INVOICE").FontSize(16).Bold();
-                box.Item().PaddingTop(6).Border(1).BorderColor(Rule).Padding(6).Column(meta =>
-                {
-                    meta.Item().Text(t => { t.Span("No.  ").SemiBold(); t.Span(model.InvoiceNumber); });
-                    meta.Item().Text(t =>
-                    {
-                        t.Span("Date  ").SemiBold();
-                        t.Span(model.InvoiceDate.ToString("dd MMM yyyy", Inv));
-                    });
-                });
-            });
-        });
-
-        col.Item().PaddingTop(10).LineHorizontal(1).LineColor(Rule);
+        page.Content().Element(Body);
     });
 
     private void Body(IContainer container) => container.Column(col =>
     {
-        col.Spacing(12);
+        col.Item().PaddingBottom(12).AlignCenter().Text("PROFORMA INVOICE").FontSize(22).Bold();
 
-        col.Item().Row(row =>
-        {
-            row.RelativeItem().Column(buyer =>
-            {
-                buyer.Item().Text("Buyer").FontColor(Muted).FontSize(8);
-                buyer.Item().Text(model.BuyerName).SemiBold();
-                foreach (var l in model.BuyerAddress)
-                    buyer.Item().Text(l);
-                if (!string.IsNullOrWhiteSpace(model.BuyerContact))
-                    buyer.Item().PaddingTop(2).Text($"Attn: {model.BuyerContact}");
-            });
+        col.Item().Element(BuyerBox);
+        col.Item().PaddingTop(20).Element(TermsBlock);
 
-            row.ConstantItem(230).Border(1).BorderColor(Rule).Padding(8).Column(terms =>
-            {
-                terms.Spacing(2);
-                TermRow(terms, "Incoterm", model.Incoterm);
-                TermRow(terms, "Currency", model.Currency);
-                TermRow(terms, "Payment terms",
-                    string.IsNullOrWhiteSpace(model.PaymentTerms) ? "—" : model.PaymentTerms!);
-                TermRow(terms, "Country of origin", model.CountryOfOrigin);
-            });
-        });
+        if (HasBank)
+            col.Item().PaddingTop(20).Element(BankBlock);
 
+        col.Item().PageBreak();
         col.Item().Element(LineItems);
 
-        col.Item().Row(row =>
-        {
-            row.RelativeItem();
-            row.ConstantItem(250).Border(1).BorderColor(Rule).Padding(8).Column(totals =>
+        if (!string.IsNullOrWhiteSpace(model.Notes))
+            col.Item().PaddingTop(14).Text(t =>
             {
-                totals.Spacing(2);
-                TotalRow(totals, "Total amount",
-                    $"{model.TotalAmount.ToString("N2", Inv)} {model.Currency}", bold: true);
-                TotalRow(totals, "Net weight", $"{model.TotalNetWeightKg.ToString("0.###", Inv)} kg");
-                TotalRow(totals, "Gross weight", $"{model.TotalGrossWeightKg.ToString("0.###", Inv)} kg");
-                TotalRow(totals, "Cartons", model.TotalCartons.ToString(Inv));
-                TotalRow(totals, "Volume", $"{model.TotalVolumeM3.ToString("0.###", Inv)} m³");
+                t.Span("Notes: ").SemiBold();
+                t.Span(model.Notes);
             });
+    });
+
+    private void BuyerBox(IContainer container) => container.Table(table =>
+    {
+        table.ColumnsDefinition(c =>
+        {
+            c.ConstantColumn(74);
+            c.RelativeColumn(3.2f);
+            c.ConstantColumn(46);
+            c.RelativeColumn(2f);
         });
 
-        if (!string.IsNullOrWhiteSpace(model.Notes))
+        var taxSuffix = string.IsNullOrWhiteSpace(model.BuyerTaxId) ? "" : $" - {model.BuyerTaxId}";
+        Row("Name:", model.BuyerName + taxSuffix, "Date:", model.InvoiceDate.ToString("dd.MM.yyyy", Inv));
+        Row("P/I NO:", model.InvoiceNumber, "Tel :", model.BuyerPhone ?? "");
+        Row("Email:", model.BuyerEmail ?? "", "Fax :", model.BuyerFax ?? "");
+        Row("Address:", model.BuyerAddress, "", "");
+
+        void Row(string l1, string v1, string l2, string v2)
         {
-            col.Item().Column(notes =>
-            {
-                notes.Item().Text("Notes").FontColor(Muted).FontSize(8);
-                notes.Item().Text(model.Notes);
-            });
+            Cell(l1, bold: true);
+            Cell(v1, bold: false);
+            Cell(l2, bold: true);
+            Cell(v2, bold: false);
         }
 
-        col.Item().Element(BankBox);
+        void Cell(string text, bool bold)
+        {
+            var c = table.Cell().Border(0.75f).BorderColor(Rule)
+                .PaddingVertical(4).PaddingHorizontal(6);
+            var t = c.Text(text).FontSize(9.5f);
+            if (bold) t.SemiBold();
+        }
+    });
+
+    private void TermsBlock(IContainer container) => container.PaddingHorizontal(24).Column(col =>
+    {
+        col.Spacing(5);
+        Term("DELIVERY TERM", model.Incoterm);
+        Term("PAYMENT", string.IsNullOrWhiteSpace(model.PaymentTerms) ? "-" : model.PaymentTerms!);
+
+        void Term(string label, string value) => col.Item().Row(r =>
+        {
+            r.ConstantItem(150).Text(label).SemiBold();
+            r.RelativeItem().Text(t =>
+            {
+                t.Span(": ").SemiBold();
+                t.Span(value).SemiBold();
+            });
+        });
+    });
+
+    private void BankBlock(IContainer container) => container.Column(col =>
+    {
+        col.Spacing(6);
+        col.Item().AlignCenter().PaddingBottom(2)
+            .Text($"Bank Detail ({model.Currency}):").FontSize(11).Bold();
+
+        Line("Company Name", string.IsNullOrWhiteSpace(model.Bank.BeneficiaryName)
+            ? model.SellerName
+            : model.Bank.BeneficiaryName);
+        Line("Our Bank", model.Bank.BankName);
+        Line("Swift Code", model.Bank.Swift);
+        Line("IBAN NO", model.Bank.Iban);
+
+        void Line(string label, string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return;
+            col.Item().Text(t =>
+            {
+                t.Span($"{label} : ").SemiBold();
+                t.Span(value).SemiBold();
+            });
+        }
     });
 
     private void LineItems(IContainer container) => container.Table(table =>
     {
         table.ColumnsDefinition(c =>
         {
-            c.ConstantColumn(22);
-            c.RelativeColumn(2.2f);
-            c.RelativeColumn(3.4f);
-            c.RelativeColumn(1.3f);
+            c.RelativeColumn(2.4f);
             c.RelativeColumn(1f);
-            c.RelativeColumn(1.5f);
-            c.RelativeColumn(1.7f);
+            c.RelativeColumn(1.2f);
+            c.RelativeColumn(1.3f);
         });
 
         table.Header(h =>
         {
-            HeadCell(h, "#");
-            HeadCell(h, "Part No.");
-            HeadCell(h, "Description");
-            HeadCell(h, "HS code");
-            HeadCell(h, "Qty", right: true);
-            HeadCell(h, "Unit price", right: true);
-            HeadCell(h, "Amount", right: true);
+            Head(h, "FILTORQ CODE");
+            Head(h, "QUANTITY");
+            Head(h, "PRICE");
+            Head(h, "TOTAL");
         });
 
         foreach (var line in model.Lines)
         {
-            BodyCell(table, line.LineNumber.ToString());
-            BodyCell(table, line.PartNumber);
-            BodyCell(table, line.Description);
-            BodyCell(table, line.HsCode ?? "");
-            BodyCell(table, line.Quantity.ToString("N0", Inv), right: true);
-            BodyCell(table, line.UnitPrice.ToString("0.###", Inv), right: true);
-            BodyCell(table, line.Amount.ToString("N2", Inv), right: true);
+            Body(line.Code);
+            Body(line.Quantity.ToString("N0", Inv));
+            Body(FormatMoney(line.UnitPrice));
+            Body(FormatMoney(line.Amount));
         }
+
+        // A blank spacer row, then the grand total in a gold box spanning the
+        // price + total columns (matching the company's template).
+        for (var i = 0; i < 4; i++) table.Cell().Height(12);
+
+        table.Cell().ColumnSpan(2);
+        table.Cell().ColumnSpan(2).Background(Gold).Border(1).BorderColor(Ink)
+            .PaddingVertical(5).AlignCenter()
+            .Text(FormatMoney(model.TotalAmount)).Bold().FontSize(11).FontColor(Ink);
+
+        void Head(TableCellDescriptor cells, string text) =>
+            cells.Cell().Border(0.75f).BorderColor(Rule).PaddingVertical(5)
+                .AlignCenter().Text(text).SemiBold().FontSize(9.5f).FontColor(HeadGreen);
+
+        void Body(string text) =>
+            table.Cell().BorderBottom(0.5f).BorderColor(FaintRule).PaddingVertical(3)
+                .AlignCenter().Text(text).FontSize(9.5f);
     });
 
-    private void BankBox(IContainer container) => container.Column(col =>
+    private void FallbackHeader(IContainer container) => container.Column(col =>
     {
-        col.Item().Text("Bank details").FontColor(Muted).FontSize(8);
-        col.Item().Text(t =>
-        {
-            Field(t, "Beneficiary", model.Bank.BeneficiaryName);
-            Field(t, "    Bank", model.Bank.BankName);
-        });
-        col.Item().Text(t =>
-        {
-            Field(t, "IBAN", model.Bank.Iban);
-            Field(t, "    SWIFT", model.Bank.Swift);
-        });
+        if (model.Logo is { Length: > 0 } logo)
+            col.Item().Height(40).AlignLeft().Image(logo).FitHeight();
+
+        col.Item().Text(model.SellerName).FontSize(13).Bold();
+        foreach (var l in model.SellerAddress)
+            col.Item().Text(l).FontSize(9);
+        col.Item().PaddingTop(6).LineHorizontal(1).LineColor(Rule);
     });
 
-    private static void Footer(IContainer container) => container.Column(col =>
+    private void FallbackFooter(IContainer container) => container.Column(col =>
     {
         col.Item().LineHorizontal(1).LineColor(Rule);
-        col.Item().PaddingTop(4).Row(row =>
-        {
-            row.RelativeItem().Text("This is a proforma invoice and not a demand for payment.")
-                .FontSize(7.5f).FontColor(Muted);
-            row.ConstantItem(120).AlignRight().Text(t =>
-            {
-                t.DefaultTextStyle(s => s.FontSize(7.5f).FontColor(Muted));
-                t.Span("Page ");
-                t.CurrentPageNumber();
-                t.Span(" / ");
-                t.TotalPages();
-            });
-        });
+        if (model.SellerContactLine is { } line)
+            col.Item().PaddingTop(3).AlignCenter().Text(line).FontSize(8).FontColor(Rule);
     });
 
-    private static void TermRow(ColumnDescriptor col, string label, string value) =>
-        col.Item().Row(r =>
+    private string FormatMoney(decimal value)
+    {
+        var n = value.ToString("N2", Money);
+        return model.Currency.ToUpperInvariant() switch
         {
-            r.ConstantItem(110).Text(label).FontColor(Muted);
-            r.RelativeItem().Text(value).SemiBold();
-        });
-
-    private static void TotalRow(ColumnDescriptor col, string label, string value, bool bold = false) =>
-        col.Item().Row(r =>
-        {
-            r.RelativeItem().Text(label).FontColor(Muted);
-            var v = r.ConstantItem(130).AlignRight().Text(value);
-            if (bold) v.Bold();
-        });
-
-    private static void Field(TextDescriptor text, string label, string value)
-    {
-        text.Span($"{label}: ").SemiBold();
-        text.Span(string.IsNullOrWhiteSpace(value) ? "—" : value);
-    }
-
-    private static void HeadCell(TableCellDescriptor cells, string text, bool right = false)
-    {
-        var c = cells.Cell().Background(HeadFill).BorderBottom(1).BorderColor(Rule)
-            .PaddingVertical(4).PaddingHorizontal(4);
-        (right ? c.AlignRight() : c).Text(text).SemiBold().FontSize(8.5f);
-    }
-
-    private static void BodyCell(TableDescriptor table, string text, bool right = false)
-    {
-        var c = table.Cell().BorderBottom(0.5f).BorderColor(FaintRule)
-            .PaddingVertical(3).PaddingHorizontal(4);
-        (right ? c.AlignRight() : c).Text(text);
+            "USD" => $"${n}",
+            "EUR" => $"€{n}",
+            "GBP" => $"£{n}",
+            "TRY" => $"₺{n}",
+            var code => $"{n} {code}",
+        };
     }
 }

@@ -15,6 +15,7 @@ public static class SeedData
             new Customer
             {
                 Name = "Muster Kfz-Teile GmbH",
+                TaxId = "DE811234567",
                 AddressLine1 = "Industriestrasse 12",
                 City = "Hamburg",
                 PostalCode = "20095",
@@ -23,17 +24,20 @@ public static class SeedData
                 DefaultCurrency = "EUR",
                 ContactName = "H. Muster",
                 ContactEmail = "purchasing@muster-example.de",
+                ContactPhone = "+49 40 123456",
             },
             new Customer
             {
                 Name = "Gulf Auto Spare Parts LLC",
+                TaxId = "100234567800003",
                 AddressLine1 = "Deira, Al Maktoum Road",
                 City = "Dubai",
                 Country = "United Arab Emirates",
-                DefaultIncoterm = "FOB Istanbul",
+                DefaultIncoterm = "FOB Izmir",
                 DefaultCurrency = "USD",
                 ContactName = "A. Rahman",
                 ContactEmail = "orders@gulfspare-example.ae",
+                ContactPhone = "+971 4 223 4455",
             });
 
         db.Products.AddRange(
