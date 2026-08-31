@@ -67,10 +67,13 @@ output.
       (incl. carton tare), carton count, CBM — per the DATA-MODEL formulas.
       Shown live on the order builder (per-line cartons/net + a summary row).
       9 unit tests.
-- [ ] **M5 — Excel order import.** Upload a customer's order spreadsheet; the
-      program reads the customer and every line row (part reference, quantity,
-      unit price, …), matches them against the catalog, and creates the order in
-      one step instead of typing each line. See "Excel order import" below.
+- [x] **M5 — Excel order import.** _(2026-08-31)_ Upload a customer's `.xlsx`
+      order; `ExcelOrderImportParser` reads every line row (code, quantity, unit
+      price), the `/orders/import` page matches each code to the catalog by
+      normalized part number, and a review screen lets the user fix matches,
+      quantities and prices before the order is created via `OrderService`.
+      7 parser tests (against the two real FILTORQ sample files). See
+      "Excel order import" below.
 - [ ] **M6 — Proforma invoice PDF.** QuestPDF document class renders a proper
       proforma invoice from an order. Company header from config.
 - [ ] **M7 — Packing list PDF + order list.** Packing list PDF (weights, cartons,
@@ -80,37 +83,47 @@ output.
 After M7: use it for a real order, then pick up stretch goals or start the
 cross-reference project.
 
-## Excel order import (M5)
+## Excel order import (M5) — as built
 
 **Problem:** customers send their purchase orders as Excel files. Re-keying
 every line into the order builder is slow and error-prone.
 
+**Confirmed layout** (from the two real FILTORQ sample files):
+
+- Row 1 headers: `CODE | QTY | UNIT PRICE | TOTAL` (one file: `TOTAL PRICE`).
+- One product per row from row 2; the block ends at the first blank code (which
+  also skips a trailing grand-total row).
+- **No customer, currency, incoterm or description anywhere in the sheet** — the
+  filename is the only hint ("FILTORQ …").
+- Codes are the company's own scheme with inconsistent spacing/suffixes:
+  `F6167G` vs `F6167 G`, `A2669 H`, `U405 KIT`, `A2576-2`.
+
 **Flow:**
-1. User clicks **Import from Excel** and uploads an `.xlsx` file.
-2. Program reads the sheet and extracts:
-   - the **customer** (from a labelled cell / header area, or a column value),
-   - one **line per row**: part reference, quantity, unit price, and any other
-     available fields (description, currency, incoterm).
-3. Program **matches** each row to the catalog:
-   - customer → existing `Customer` by name (fuzzy/normalised match),
-   - part reference → `Product` by `PartNumber` (also check a customer/OEM
-     cross-reference once that exists).
-4. Show a **review screen**: matched rows pre-filled, unmatched rows flagged with
-   a dropdown to pick the right product (or "create later"), editable quantities
-   and prices, running totals.
-5. On confirm, create the order (draft) via `OrderService` — reusing the same
-   validation and order-number logic as the manual builder.
+1. **Orders → Import from Excel** (`/orders/import`), upload an `.xlsx` (≤ 5 MB).
+2. `ExcelOrderImportParser.Parse(Stream)` (pure, no DB): finds the header row by
+   name, maps columns by header text (small synonym list), reads one
+   `ImportedRow` per row until a blank code, flags rows with a bad quantity/price
+   rather than failing the whole file, and collects warnings.
+3. The page loads the active catalog and matches each row's code to a `Product`
+   by **normalized part number** (`NormalizeCode` = trim + upper-case + strip
+   whitespace). The customer is picked manually, pre-selected when a filename
+   token matches a customer name.
+4. **Review screen**: per row — matched product (editable `MudSelect`), quantity,
+   unit price (defaulted from the sheet, rounded to 3 dp), computed line total,
+   and an **Import** tick (off by default for unmatched / error rows). Live
+   order totals via `CalculationService`.
+5. On **Create order**, an `Order` is built from the ticked, matched rows and
+   saved through the existing `OrderService.CreateAsync` (same numbering and
+   validation as the manual builder); the user lands on `/orders/{id}`.
 
-**Scope for M5:**
-- Support one agreed spreadsheet layout first (get 2–3 real customer files from
-  Kazim); make the column mapping configurable rather than hard-coded.
-- Library: `ClosedXML` (MIT) or `EPPlus` (non-commercial licence — check) for
-  reading `.xlsx`.
-- Nothing is written until the user confirms on the review screen.
-- Unit-test the parser against sample files (rows, totals, missing/blank cells).
+**Library:** `ClosedXML` 0.105.1 (MIT).
 
-**Out of scope for M5:** `.xls` (old format), multi-sheet workbooks, importing
-new customers/products automatically, learning column layouts.
+**Out of scope for M5:** `.xls`/`.ods`/`.csv`, multi-sheet workbooks, reading
+the customer/currency from the sheet, auto-creating customers or products,
+bulk catalog import, persisted per-customer column mappings, OEM
+cross-reference matching. Unit prices are rounded to the schema's
+`decimal(18,3)` on import (the sample sheets carry ~14 dp of costing noise);
+widening the price columns is a later change if needed.
 
 ## Risks / unknowns
 

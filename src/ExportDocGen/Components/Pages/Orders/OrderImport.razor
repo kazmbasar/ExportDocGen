@@ -1,0 +1,380 @@
+@page "/orders/import"
+@inject ExcelOrderImportParser Parser
+@inject OrderService OrderService
+@inject CustomerService CustomerService
+@inject ProductService ProductService
+@inject CalculationService Calc
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Import order from Excel</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h4">Import order from Excel</MudText>
+    <MudSpacer />
+    <MudButton OnClick="@(() => Nav.NavigateTo("/orders"))">Cancel</MudButton>
+</MudStack>
+
+@if (_step == Step.Upload)
+{
+    <MudPaper Class="pa-6" Outlined="true" Elevation="0">
+        <MudText Typo="Typo.body1" Class="mb-2">
+            Upload a customer order spreadsheet (<code>.xlsx</code>). The sheet
+            needs a header row with <b>CODE</b>, <b>QTY</b> and <b>UNIT PRICE</b>
+            columns; one product per row.
+        </MudText>
+        <MudFileUpload T="IBrowserFile" FilesChanged="OnFileChanged" Accept=".xlsx"
+                       Hidden="false" Disabled="_busy"
+                       InputClass="mud-typography-body1 mt-2" />
+        @if (_busy)
+        {
+            <MudProgressLinear Indeterminate="true" Class="mt-4" />
+        }
+        @if (_uploadError is not null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-4">@_uploadError</MudAlert>
+        }
+    </MudPaper>
+}
+else
+{
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="4">
+            <MudSelect T="int" Label="Customer" Value="_customerId"
+                       ValueChanged="OnCustomerChanged" Required="true">
+                @foreach (var c in _customers)
+                {
+                    <MudSelectItem T="int" Value="c.Id">@c.Name (@c.Country)</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="6" sm="3" md="2">
+            <MudDatePicker Label="Order date" Date="_orderDate" DateChanged="d => _orderDate = d" />
+        </MudItem>
+        <MudItem xs="6" sm="3" md="2">
+            <MudTextField @bind-Value="_currency" Label="Currency" Required="true" />
+        </MudItem>
+        <MudItem xs="12" sm="12" md="4" Class="d-flex align-center">
+            <MudText Typo="Typo.body2">
+                From <b>@_fileName</b> — @_sheet!.Rows.Count row(s),
+                @IncludedLines.Count() ready to import.
+            </MudText>
+        </MudItem>
+    </MudGrid>
+
+    @if (_sheet!.Warnings.Count > 0)
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Class="mt-3">
+            @string.Join(" ", _sheet.Warnings)
+        </MudAlert>
+    }
+
+    <MudSimpleTable Dense="true" Hover="true" Class="mt-4" Style="overflow-x:auto">
+        <thead>
+            <tr>
+                <th style="width:5%">Row</th>
+                <th style="width:12%">Code</th>
+                <th style="width:33%">Product</th>
+                <th style="width:10%">Quantity</th>
+                <th style="width:14%">Unit price</th>
+                <th style="width:12%" class="text-right">Line total</th>
+                <th style="width:6%" class="text-center">Import</th>
+                <th style="width:8%"></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var line in _lines)
+            {
+                var calc = LineCalc(line);
+                <tr @key="line">
+                    <td>@line.ExcelRow</td>
+                    <td><code>@line.RawCode</code></td>
+                    <td>
+                        <MudSelect T="int" @bind-Value="line.ProductId" Dense="true"
+                                   Clearable="true" Placeholder="— pick a product —">
+                            @foreach (var p in _products)
+                            {
+                                <MudSelectItem T="int" Value="p.Id">@p.PartNumber — @p.Description</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </td>
+                    <td>
+                        <MudNumericField T="int" @bind-Value="line.Quantity" Min="0" Margin="Margin.Dense" />
+                    </td>
+                    <td>
+                        <MudNumericField T="decimal" @bind-Value="line.UnitPrice" Min="0" Format="0.000" Margin="Margin.Dense" />
+                    </td>
+                    <td class="text-right">@(calc?.LineTotal.ToString("N2") ?? "–")</td>
+                    <td class="text-center">
+                        <MudCheckBox T="bool" @bind-Value="line.Include" Dense="true" />
+                    </td>
+                    <td>
+                        @if (line.ParseError is not null)
+                        {
+                            <MudTooltip Text="@line.ParseError">
+                                <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Error" Size="Size.Small" />
+                            </MudTooltip>
+                        }
+                        else if (line.ProductId == 0)
+                        {
+                            <MudTooltip Text="No catalog part matches this code — pick one or leave it out.">
+                                <MudIcon Icon="@Icons.Material.Filled.HelpOutline" Color="Color.Warning" Size="Size.Small" />
+                            </MudTooltip>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+
+    <MudGrid Class="mt-4">
+        <MudItem xs="6" sm="4" md="2">
+            <MudPaper Class="pa-3" Elevation="0" Outlined="true">
+                <MudText Typo="Typo.overline">Order total</MudText>
+                <MudText Typo="Typo.h6">@Calculation.OrderTotal.ToString("N2") @_currency</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" sm="4" md="2">
+            <MudPaper Class="pa-3" Elevation="0" Outlined="true">
+                <MudText Typo="Typo.overline">Lines</MudText>
+                <MudText Typo="Typo.h6">@IncludedLines.Count()</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" sm="4" md="2">
+            <MudPaper Class="pa-3" Elevation="0" Outlined="true">
+                <MudText Typo="Typo.overline">Cartons</MudText>
+                <MudText Typo="Typo.h6">@Calculation.TotalCartons</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" sm="4" md="2">
+            <MudPaper Class="pa-3" Elevation="0" Outlined="true">
+                <MudText Typo="Typo.overline">Gross weight</MudText>
+                <MudText Typo="Typo.h6">@Calculation.TotalGrossWeightKg.ToString("0.###") kg</MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <MudStack Row="true" Class="mt-6">
+        <MudButton OnClick="Reset">Choose a different file</MudButton>
+        <MudSpacer />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Create" Disabled="_saving">
+            Create order
+        </MudButton>
+    </MudStack>
+}
+
+@code {
+    private enum Step { Upload, Review }
+
+    private const long MaxBytes = 5 * 1024 * 1024;
+
+    private Step _step = Step.Upload;
+    private bool _busy;
+    private bool _saving;
+    private string? _uploadError;
+    private string _fileName = "";
+
+    private ImportedSheet? _sheet;
+    private readonly List<ImportLine> _lines = [];
+
+    private List<Customer> _customers = [];
+    private List<Product> _products = [];
+    private Dictionary<int, Product> _productLookup = [];
+
+    private int _customerId;
+    private DateTime? _orderDate = DateTime.Today;
+    private string _currency = "USD";
+
+    private IEnumerable<ImportLine> IncludedLines => _lines.Where(l =>
+        l.Include && l.ProductId != 0 && l.Quantity > 0 && _productLookup.ContainsKey(l.ProductId));
+
+    private LineCalculation? LineCalc(ImportLine line) =>
+        _productLookup.TryGetValue(line.ProductId, out var p)
+            ? Calc.CalculateLine(line.Quantity, line.UnitPrice, p)
+            : null;
+
+    private OrderCalculation Calculation => Calc.CalculateOrder(
+        IncludedLines.Select(l => (l.Quantity, l.UnitPrice, _productLookup[l.ProductId])));
+
+    private async Task OnFileChanged(IBrowserFile? file)
+    {
+        if (file is null) return;
+
+        _uploadError = null;
+
+        if (!file.Name.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
+        {
+            _uploadError = "Please choose an .xlsx file.";
+            return;
+        }
+        if (file.Size > MaxBytes)
+        {
+            _uploadError = "That file is larger than 5 MB.";
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            using var source = file.OpenReadStream(MaxBytes);
+            using var buffer = new MemoryStream();
+            await source.CopyToAsync(buffer);
+            buffer.Position = 0;
+
+            _sheet = Parser.Parse(buffer);
+            _fileName = file.Name;
+
+            await LoadCatalogAsync();
+            BuildLines();
+            GuessCustomerFromFileName();
+            _step = Step.Review;
+        }
+        catch (InvalidImportException ex)
+        {
+            _uploadError = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            _uploadError = $"Could not read the file: {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task LoadCatalogAsync()
+    {
+        _customers = await CustomerService.GetAllAsync();
+        _products = await ProductService.GetAllAsync(includeInactive: false);
+        _productLookup = _products.ToDictionary(p => p.Id);
+    }
+
+    private void BuildLines()
+    {
+        _lines.Clear();
+
+        var byCode = new Dictionary<string, int>();
+        foreach (var p in _products)
+            byCode.TryAdd(ExcelOrderImportParser.NormalizeCode(p.PartNumber), p.Id);
+
+        foreach (var row in _sheet!.Rows)
+        {
+            var productId = byCode.GetValueOrDefault(
+                ExcelOrderImportParser.NormalizeCode(row.RawCode));
+
+            var unitPrice = row.UnitPrice is { } up
+                ? Math.Round(up, 3, MidpointRounding.AwayFromZero)
+                : (productId != 0 ? _productLookup[productId].DefaultUnitPrice ?? 0m : 0m);
+
+            _lines.Add(new ImportLine
+            {
+                ExcelRow = row.ExcelRow,
+                RawCode = row.RawCode,
+                ProductId = productId,
+                Quantity = row.Quantity is { } q && q > 0 ? (int)Math.Round(q) : 0,
+                UnitPrice = unitPrice,
+                ParseError = row.Error,
+                Include = row.Error is null && productId != 0,
+            });
+        }
+    }
+
+    private void GuessCustomerFromFileName()
+    {
+        var stem = Path.GetFileNameWithoutExtension(_fileName).ToUpperInvariant();
+        var tokens = stem.Split(
+                [' ', '-', '_', '.', ',', '(', ')', '/', '\\'],
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(t => t.Length >= 3)
+            .ToArray();
+
+        var match = _customers.FirstOrDefault(c =>
+            tokens.Any(t => c.Name.ToUpperInvariant().Contains(t)));
+        if (match is not null)
+        {
+            _customerId = match.Id;
+            OnCustomerChanged(match.Id);
+        }
+    }
+
+    private void OnCustomerChanged(int customerId)
+    {
+        _customerId = customerId;
+        var customer = _customers.FirstOrDefault(c => c.Id == customerId);
+        if (customer is not null && !string.IsNullOrWhiteSpace(customer.DefaultCurrency))
+            _currency = customer.DefaultCurrency;
+    }
+
+    private void Reset()
+    {
+        _step = Step.Upload;
+        _sheet = null;
+        _lines.Clear();
+        _customerId = 0;
+        _fileName = "";
+        _uploadError = null;
+    }
+
+    private async Task Create()
+    {
+        if (_customerId == 0)
+        {
+            Snackbar.Add("Choose a customer.", Severity.Error);
+            return;
+        }
+        var included = IncludedLines.ToList();
+        if (included.Count == 0)
+        {
+            Snackbar.Add("No lines are ready to import — match a product and tick Import.", Severity.Error);
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(_currency))
+        {
+            Snackbar.Add("Enter a currency.", Severity.Error);
+            return;
+        }
+
+        var customer = _customers.First(c => c.Id == _customerId);
+        var order = new Order
+        {
+            CustomerId = _customerId,
+            OrderDate = DateOnly.FromDateTime(_orderDate ?? DateTime.Today),
+            Currency = _currency.Trim().ToUpperInvariant(),
+            Incoterm = customer.DefaultIncoterm ?? "",
+        };
+        foreach (var line in included)
+        {
+            order.Lines.Add(new OrderLine
+            {
+                ProductId = line.ProductId,
+                Quantity = line.Quantity,
+                UnitPrice = line.UnitPrice,
+            });
+        }
+
+        _saving = true;
+        try
+        {
+            var id = await OrderService.CreateAsync(order);
+            Snackbar.Add($"Order created from {included.Count} line(s).", Severity.Success);
+            Nav.NavigateTo($"/orders/{id}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not create the order: {ex.Message}", Severity.Error);
+            _saving = false;
+        }
+    }
+
+    private sealed class ImportLine
+    {
+        public int ExcelRow { get; set; }
+        public string RawCode { get; set; } = "";
+        public int ProductId { get; set; }
+        public int Quantity { get; set; }
+        public decimal UnitPrice { get; set; }
+        public string? ParseError { get; set; }
+        public bool Include { get; set; }
+    }
+}

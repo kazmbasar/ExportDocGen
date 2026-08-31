@@ -5,6 +5,35 @@ revisit.
 
 ---
 
+## 2026-08-31 — M5 Excel order import.
+
+**Decided:**
+- **ClosedXML 0.105.1** (MIT) to read `.xlsx`. Rejected EPPlus (its 5+ licence is
+  non-commercial and needs a per-app licence declaration) and raw
+  `DocumentFormat.OpenXml` (too low-level for a small feature).
+- The parser (`ExcelOrderImportParser`) is **pure / no DB** and tuned to the
+  real layout the company receives (header row with `CODE` / `QTY` /
+  `UNIT PRICE`, one row per line, stop at the first blank code). It stays
+  slightly flexible: header row found by name, columns mapped by header text via
+  a synonym list — not hard-coded to columns A–D.
+- A row with a bad quantity/price is **flagged, not fatal** — the rest of the
+  file still imports and the user fixes it on the review screen.
+- **Customer is chosen manually** (pre-selected from a filename token). The
+  sample sheets carry no customer/currency/incoterm, so there is nothing to
+  parse; currency/incoterm come from the customer defaults like the manual
+  builder.
+- Part matching = exact match on a **normalized code** (trim, upper-case, strip
+  whitespace) so `F6167 G` == `F6167G`. Unmatched rows get a manual product
+  picker and are excluded until matched. No OEM cross-reference yet.
+- Imported unit prices are **rounded to the existing `decimal(18,3)`** column
+  precision; the review screen shows the rounded value so nothing is hidden.
+- The import **reuses `OrderService.CreateAsync`** — same numbering/validation as
+  the manual builder; nothing is persisted until the user clicks *Create order*.
+**Revisit if:** other customers send a materially different layout (customer in a
+cell, multiple blocks, `.xls`) → add a configurable per-customer column mapping;
+or invoice unit prices need more than 3 dp → widen the price columns; or code
+mismatches become common → build the cross-reference lookup.
+
 ## 2026-08-31 — M4 calculation rounding.
 
 **Decided:**

@@ -32,6 +32,7 @@ builder.Services.AddScoped<ProductService>();
 builder.Services.AddScoped<OrderNumberGenerator>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<CalculationService>();
+builder.Services.AddSingleton<ExcelOrderImportParser>();
 
 // QuestPDF Community license (free for companies under the revenue threshold).
 QuestPDF.Settings.License = LicenseType.Community;

@@ -6,12 +6,13 @@ Excel/Word copy-paste.
 
 ## Status
 
-**M4 (Calculations) complete.** Started 2026-08-31. Solution builds, runs, and
-has 16 passing tests. SQLite database, EF Core migrations, seed data, the
-MudBlazor UI shell, Customer/Product CRUD, the order builder, and live
-per-line + order calculations (money total, net/gross weight, carton count,
-CBM) are all in place. Next: M5 — Excel order import. See
-[`docs/PLANNING.md`](docs/PLANNING.md).
+**M5 (Excel order import) complete.** Started 2026-08-31. Solution builds, runs,
+and has 25 passing tests. SQLite database, EF Core migrations, seed data, the
+MudBlazor UI shell, Customer/Product CRUD, the order builder, live per-line +
+order calculations (money total, net/gross weight, carton count, CBM), and
+**importing an order from a customer's `.xlsx` spreadsheet** (parse → match to
+the catalog → review screen → create) are all in place. Next: M6 — proforma
+invoice PDF. See [`docs/PLANNING.md`](docs/PLANNING.md).
 
 ## Stack
 
@@ -70,12 +71,14 @@ ExportDocGen/
     └── ExportDocGen/           # Blazor Web App
         ├── Program.cs          # DI, DbContext factory, MudBlazor, startup migrate + seed
         ├── Data/               # AppDbContext, Entities/, SeedData, CompanyProfile
-        ├── Services/           # Customer/Product/Order services, OrderNumberGenerator
+        ├── Services/           # Customer/Product/Order/Calculation services, OrderNumberGenerator,
+        │                       #   ExcelOrderImportParser
         ├── Migrations/         # EF Core migrations
         └── Components/
             ├── Layout/
             └── Pages/
                 ├── Customers/  # CustomerList (/customers) + CustomerDialog
                 ├── Products/   # ProductList (/products) + ProductDialog
-                └── Orders/     # OrderList (/orders) + OrderEdit (/orders/new, /orders/{id})
+                └── Orders/     # OrderList (/orders), OrderEdit (/orders/new, /orders/{id}),
+                                #   OrderImport (/orders/import)
 ```

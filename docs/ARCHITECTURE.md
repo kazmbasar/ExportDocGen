@@ -41,7 +41,8 @@ src/ExportDocGen/
 │   ├── ProductService.cs         # ✅ M2 — + PartNumberExistsAsync, includeInactive filter
 │   ├── OrderService.cs           # ✅ M3 — list/get/create/update/delete + line reconcile
 │   ├── OrderNumberGenerator.cs   # ✅ M3 — "EXP-{year}-{seq:0000}", per-year sequence
-│   └── CalculationService.cs     # ✅ M4 — pure; line + order money/weight/carton/CBM
+│   ├── CalculationService.cs     # ✅ M4 — pure; line + order money/weight/carton/CBM
+│   └── ExcelOrderImportParser.cs # ✅ M5 — pure; reads a customer .xlsx into line rows
 ├── Documents/                    # QuestPDF IDocument classes
 │   ├── ProformaInvoiceDocument.cs
 │   ├── PackingListDocument.cs
@@ -50,7 +51,7 @@ src/ExportDocGen/
 │   ├── Pages/
 │   │   ├── Customers/            # ✅ CustomerList + CustomerDialog
 │   │   ├── Products/             # ✅ ProductList + ProductDialog
-│   │   └── Orders/               # ✅ OrderList + OrderEdit (new + edit share one page)
+│   │   └── Orders/               # ✅ OrderList + OrderEdit (new+edit) + OrderImport (/orders/import)
 │   └── Layout/
 └── Migrations/                   # EF Core generated
 ```
@@ -58,9 +59,11 @@ src/ExportDocGen/
 `tests/ExportDocGen.Tests/` — xUnit. `SqliteTestFactory` gives each test an
 isolated in-memory SQLite database (connection kept open) behind
 `IDbContextFactory<AppDbContext>`, so FK/cascade/unique-index behaviour is real.
-Current coverage (16 tests): `OrderService` round-trip + line reconciliation,
-order-number sequencing, delete guards, and `CalculationService` line/order
-formulas, carton rounding, and money rounding.
+Current coverage (25 tests): `OrderService` round-trip + line reconciliation,
+order-number sequencing, delete guards, `CalculationService` line/order
+formulas, carton rounding, money rounding, and `ExcelOrderImportParser` against
+the two real FILTORQ sample workbooks (row count, totals-row cut-off, code
+normalization, bad-cell flagging, header detection below a title row).
 
 ## Key conventions
 
@@ -110,11 +113,23 @@ the source tree.
 `Dockerfile` (multi-stage `dotnet publish`) authored during M7 but not part of
 MVP. Local run is `dotnet run` or a published self-contained binary.
 
-## Excel order import (M5)
+## Excel order import (M5) — done
 
-Planned addition after M4. New `Import/` folder: an `.xlsx` reader
-(`ClosedXML` or `EPPlus` — licence check first), a configurable column-mapping
-model, and a matcher that resolves the customer and each line row against the
-catalog. A review page (`/orders/import`) lets the user fix unmatched rows
-before the order is created through the existing `OrderService`. See
-`docs/PLANNING.md` → "Excel order import" for the full flow and scope.
+- **`Services/ExcelOrderImportParser.cs`** — pure, no DB. `Parse(Stream)` reads
+  the first worksheet with **ClosedXML** (0.105.1, MIT), locates the header row
+  by name, maps `CODE` / `QTY` / `UNIT PRICE` / `TOTAL` columns via a synonym
+  list, and returns an `ImportedSheet` (`ImportedRow` list + warnings). Reading
+  stops at the first blank code (skips a trailing totals row). Rows with an
+  unreadable quantity/price get an `Error` instead of aborting the file.
+  `NormalizeCode` (trim + upper-case + strip whitespace) is the shared key for
+  catalog matching. Registered as a singleton (stateless).
+- **`Components/Pages/Orders/OrderImport.razor`** (`/orders/import`) — upload →
+  review → create wizard. Loads the active catalog, auto-matches each code to a
+  `Product` by normalized part number, pre-selects the customer from a filename
+  token, and shows an editable per-row table (product, qty, price, line total,
+  Import tick) with live totals from `CalculationService`. On confirm it builds
+  an `Order` from the ticked matched rows and calls `OrderService.CreateAsync`
+  — nothing is written before that.
+
+See `docs/PLANNING.md` → "Excel order import (M5) — as built" for the confirmed
+spreadsheet layout and scope boundaries.
