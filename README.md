@@ -6,19 +6,22 @@ Excel/Word copy-paste.
 
 ## Status
 
-**M6 (Proforma invoice PDF) complete.** Started 2026-08-31. Solution builds,
-runs, and has 28 passing tests. SQLite database, EF Core migrations, seed data,
+**M6.5 (Multi-seller rebuild) complete.** Started 2026-08-31. Solution builds,
+runs, and has 32 passing tests. SQLite database, EF Core migrations, seed data,
 the MudBlazor UI shell, Customer/Product CRUD, the order builder, live
-calculations, Excel order import, and a **proforma invoice PDF** per order —
-laid out like the company's real template, letterhead and all
-(`GET /orders/{id}/proforma.pdf`, "Proforma PDF" buttons on the order list and
-editor) — are all in place. Next: M7 — packing list PDF + order list/search.
-See [`docs/PLANNING.md`](docs/PLANNING.md).
+calculations, Excel order import, and a **proforma invoice PDF** per order.
 
-The company/bank details and letterhead under `"CompanyProfile"` in
-`src/ExportDocGen/appsettings.json` are set for Filtorq; the buyer tax number
-placeholder still needs filling in. Swap `wwwroot/proforma-letterhead.png` for a
-higher-resolution letterhead when available.
+The group's **two exporting companies** (Filtorq, İkiler Otomotiv) are modelled
+as `SellerCompany` rows. You pick the seller when creating an order; the proforma
+renders from that company's own template (`GET /orders/{id}/proforma.pdf`), each
+company keeps its own order-number sequence, the customer's payment type and a
+free-text bank block flow onto the document. Next: M7 — packing list PDF + order
+list/search. See [`docs/PLANNING.md`](docs/PLANNING.md).
+
+Seller company details (names, bank text, letterhead paths) are seeded in
+`src/ExportDocGen/Data/SeedData.cs` — there is no editing screen yet. Swap
+`wwwroot/proforma-letterhead.png` / `wwwroot/ikiler-letterhead.png` for
+higher-resolution art when available.
 
 ## Stack
 
@@ -76,10 +79,10 @@ ExportDocGen/
 └── src/
     └── ExportDocGen/           # Blazor Web App
         ├── Program.cs          # DI, DbContext factory, MudBlazor, startup migrate + seed
-        ├── Data/               # AppDbContext, Entities/, SeedData, CompanyProfile
-        ├── Services/           # Customer/Product/Order/Calculation services, OrderNumberGenerator,
-        │                       #   ExcelOrderImportParser, OrderDocumentService
-        ├── Documents/          # QuestPDF: ProformaInvoiceModel + ProformaInvoiceDocument
+        ├── Data/               # AppDbContext, Entities/ (incl. SellerCompany), SeedData
+        ├── Services/           # Customer/Product/Order/SellerCompany/Calculation services,
+        │                       #   OrderNumberGenerator, ExcelOrderImportParser, OrderDocumentService
+        ├── Documents/          # QuestPDF: ProformaInvoiceModel + Filtorq/İkiler document classes + MoneyWords
         ├── Migrations/         # EF Core migrations
         └── Components/
             ├── Layout/

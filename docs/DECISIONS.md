@@ -5,6 +5,50 @@ revisit.
 
 ---
 
+## 2026-09-01 — M6.5: multi-seller rebuild.
+
+The group exports through **two companies** — Filtorq and İkiler Otomotiv — each
+with its own proforma template. Kazim provided İkiler's real proforma
+(`PROFORMA INVOICE flowguard solution.pdf`).
+
+**Decided:**
+- **`SellerCompany` entity replaces the `CompanyProfile` config.** Two seeded
+  rows (Filtorq = 1, İkiler = 2); the `AddMultiSeller` migration inserts them so
+  existing orders back-fill to Filtorq behind the new required FK. No CRUD UI
+  yet — they are edited in `SeedData` / by hand.
+- **Seller is chosen per order** (`Order.SellerCompanyId`, required picker on the
+  order builder and the Excel-import review screen). Customers are **shared** —
+  not scoped per company.
+- **Independent order-number sequence per company.** `OrderNumberGenerator` takes
+  the seller: `EXP-{year}-{seq:0000}` for Filtorq (`ExpYearSeq`),
+  `{yyMMdd}/{seq}` for İkiler (`DateSlashSeq`). The `OrderNumber` is shown
+  verbatim as the proforma P/I NO.
+- **One document class per template**, selected in `OrderDocumentService` by
+  `SellerCompany.ProformaTemplate`: `ProformaInvoiceDocument` (Filtorq, the M6b
+  layout) and `IkilerProformaDocument` (new). Shared print-ready data in
+  `ProformaInvoiceModel`.
+- **İkiler template specifics:** drawn letterhead header (logo + brand strip
+  image cropped from the sample PDF at 300 dpi → `wwwroot/ikiler-letterhead.png`)
+  + text office footer; 3-row buyer box (no tax id / fax); **5-column** bordered
+  grid `PRODUCT CODE | DESCRIPTION | UNIT PRICE | QUANTITY | TOTAL PRICE` with an
+  inline Σqty / Σtotal row; the grand total **spelled out** ("… DOLLARS ONLY",
+  via `Humanizer.Core`); `INCOTERMS / DELIVERY TIME / VALIDITY / PAYMENT TERM`;
+  money `$11.904,00` (dot thousands). Line **description = filter category**
+  ("AIR FILTER") from `Product.FilterType`.
+- **Bank details are free text on the order** (`Order.BankDetails`, multi-line),
+  pre-filled from `SellerCompany.DefaultBankDetails` and printed verbatim — the
+  two companies have 10+ accounts, so this is not modelled. Replaces the
+  structured `CompanyProfile.Bank`.
+- **Payment type is a managed choice on the customer** (`Customer.PaymentType`,
+  `PaymentTerm` enum) that pre-fills `Order.PaymentTerms`.
+- **`DELIVERY TIME` / `VALIDITY`** are optional `Order` fields, pre-filled from
+  per-company defaults.
+
+**Revisit if:** a third seller appears (the two-class approach may want a shared
+base or a parametrised layout); İkiler's real P/I sequence turns out not to reset
+daily; Kazim wants the payment-type list to be data-driven rather than an enum;
+`SellerCompany` needs an editing screen.
+
 ## 2026-08-31 — M6b: proforma matched to the company's real template.
 
 Kazim provided a real issued proforma (`leo motors AUGUST ORDER.pdf`). The M6

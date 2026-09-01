@@ -20,10 +20,34 @@ and dimensions as `decimal`. Times stored as UTC.
 | PostalCode | string? | |
 | Country | string | required (ISO country name or code) |
 | DefaultIncoterm | string? | e.g. "FOB Istanbul", "CIF Hamburg" |
+| PaymentType | PaymentTerm? | managed choice (stored as enum name); pre-fills `Order.PaymentTerms` |
 | DefaultCurrency | string | ISO 4217, e.g. "USD", "EUR" — default "USD" |
 | ContactName | string? | |
 | ContactEmail | string? | |
 | ContactPhone | string? | shown on the proforma |
+
+`PaymentTerm`: `Prepayment100` · `Advance40Balance60` · `Advance50Balance50` ·
+`CashAgainstDocuments` · `LetterOfCreditAtSight` (friendly text via
+`PaymentTermText.Of`).
+
+### SellerCompany
+
+The group's exporting companies (Filtorq, İkiler). Seeded, no CRUD UI yet.
+Replaces the former `CompanyProfile` config.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| Id | int | PK — 1 = Filtorq, 2 = İkiler |
+| Name | string | legal name — bank block, PDF metadata |
+| ShortName | string | order-form picker label |
+| ProformaTemplate | enum | `FiltorqClassic` \| `IkilerGrid` (stored as name) |
+| NumberFormat | enum | `ExpYearSeq` (`EXP-{year}-{seq:0000}`) \| `DateSlashSeq` (`{yyMMdd}/{seq}`) |
+| LetterheadPath | string? | asset path under the content root; null → text header |
+| DefaultBankDetails | string? | multi-line; pre-fills `Order.BankDetails` |
+| DefaultDeliveryTime | string? | pre-fills `Order.DeliveryTime` |
+| DefaultValidity | string? | pre-fills `Order.Validity` |
+| CountryOfOrigin | string | default "Türkiye" |
+| IsActive | bool | inactive companies hidden from the picker |
 
 ### Product
 
@@ -49,12 +73,16 @@ and dimensions as `decimal`. Times stored as UTC.
 | Field | Type | Notes |
 |-------|------|-------|
 | Id | int | PK, identity |
-| OrderNumber | string | required, unique — e.g. "EXP-2026-0001" |
-| CustomerId | int | FK → Customer |
+| OrderNumber | string | required, unique — format per the seller's `NumberFormat`; independent sequence per company |
+| CustomerId | int | FK → Customer (restrict delete) |
+| SellerCompanyId | int | FK → SellerCompany (restrict delete) — the issuing company |
 | OrderDate | DateOnly | |
 | Incoterm | string | copied from customer default, editable |
 | Currency | string | copied from customer default, editable |
-| PaymentTerms | string? | |
+| PaymentTerms | string? | pre-filled from `Customer.PaymentType` |
+| BankDetails | string? | multi-line free text, printed verbatim on the proforma; pre-filled from the seller default |
+| DeliveryTime | string? | optional, İkiler template only ("6 WEEKS") |
+| Validity | string? | optional, İkiler template only |
 | Notes | string? | free text shown on the proforma |
 | CreatedUtc | DateTime | set on insert |
 
@@ -77,12 +105,13 @@ issued, snapshot these onto `OrderLine` later — deferred for MVP, noted in
 ## Relationships
 
 ```
-Customer 1 ──< Order 1 ──< OrderLine >── 1 Product
+SellerCompany 1 ──< Order >── 1 Customer
+                     Order 1 ──< OrderLine >── 1 Product
 ```
 
 - `Order.Lines` — collection, cascade delete.
-- `Customer` / `Product` — restrict delete if referenced (or soft-delete via
-  `IsActive` on Product).
+- `Customer` / `Product` / `SellerCompany` — restrict delete if referenced (or
+  soft-delete via `IsActive`).
 
 ## Computed values (never stored)
 

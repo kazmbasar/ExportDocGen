@@ -83,30 +83,31 @@ output.
       `dd.MM.yyyy`. `OrderDocumentService` + `GET /orders/{id}/proforma.pdf`;
       "Proforma PDF" buttons on the order list and editor. Added `Customer.TaxId`
       / `ContactPhone`. 3 tests.
-- [ ] **M6.5 — Multi-seller rebuild (planned 2026-08-31).** The group has **two
-      companies that export**. The user must **choose the sender (seller)
-      company** when creating an order, and the proforma is generated from *that
-      company's own template*. A second, differently-laid-out proforma sample is
-      coming for company #2. Scope to design once that sample is in hand:
-      - `SellerCompany` entity (name, tax id, address, phone/fax/email/website,
-        country of origin, bank details, letterhead, template selector) —
-        supersedes the single `CompanyProfile` config.
-      - `Order.SellerCompanyId` + a seller picker on the order builder. Decide:
-        per-company order-number sequences; customers shared vs. per-company.
-      - Template-aware proforma: a layout discriminator on `SellerCompany`
-        picking one of N document implementations (or one parametrised
-        `ProformaInvoiceDocument` if the two layouts are close). The current M6
-        layout becomes company #1's template.
-      - **Customer form: Payment Type selector** (managed choice, not free text —
-        options list TBD) alongside Incoterm. Both are per-customer defaults that
-        pre-fill the order and appear on the proforma.
-      - **Order form: free-text "bank details" field** (`string`, multi-line).
-        The two companies have 10+ accounts across banks/currencies, so this is
-        NOT structured — the user types the whole bank block and the proforma
-        renders it verbatim (line breaks preserved). May be pre-filled from a
-        per-seller-company default text. Replaces M6's structured
-        `CompanyProfile.Bank` for rendering.
-      Lands before / alongside M7.
+- [x] **M6.5 — Multi-seller rebuild.** _(2026-09-01)_ The group exports through
+      **two companies** — Filtorq and İkiler Otomotiv — each with its own
+      proforma template.
+      - **`SellerCompany` entity** (name, short name, `ProformaTemplate`,
+        `NumberFormat`, letterhead, default bank / delivery / validity text)
+        replaces the `CompanyProfile` config. Two seeded rows; the
+        `AddMultiSeller` migration inserts them and back-fills existing orders to
+        Filtorq. No CRUD UI.
+      - **`Order.SellerCompanyId`** + a required "Seller company" picker on the
+        order builder and the Excel-import review screen. Customers are shared.
+      - **Independent order-number sequence per company** (`OrderNumberGenerator`
+        takes the seller): `EXP-{year}-{seq}` for Filtorq, `{yyMMdd}/{seq}` for
+        İkiler.
+      - **Two proforma document classes** selected by `ProformaTemplate` in
+        `OrderDocumentService`: `ProformaInvoiceDocument` (Filtorq, the M6b
+        layout) and `IkilerProformaDocument` (new — 5-column bordered grid,
+        inline totals row, amount-in-words via `Humanizer.Core`,
+        INCOTERMS/DELIVERY TIME/VALIDITY/PAYMENT TERM, drawn header + text
+        footer).
+      - **`Customer.PaymentType`** — managed `PaymentTerm` choice, pre-fills
+        `Order.PaymentTerms`.
+      - **`Order.BankDetails`** — free-text multi-line block, pre-filled from the
+        seller default, printed verbatim. Plus optional `Order.DeliveryTime` /
+        `Order.Validity`. Replaces the structured `CompanyProfile.Bank`.
+      - 32 tests. See `docs/DECISIONS.md` (2026-09-01).
 - [ ] **M7 — Packing list PDF + order list.** Packing list PDF (weights, cartons,
       dimensions, volume). Order list/search screen. Regenerate PDFs from a
       saved order.

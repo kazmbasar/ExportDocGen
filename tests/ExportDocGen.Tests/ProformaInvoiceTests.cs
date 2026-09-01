@@ -121,6 +121,62 @@ public class ProformaInvoiceTests
     }
 
     [Fact]
+    public void Ikiler_template_renders_a_grid_proforma_pdf()
+    {
+        var order = SampleOrder();
+        order.Currency = "USD";
+        order.DeliveryTime = "6 WEEKS";
+        order.Validity = "2 WEEKS FROM PROFORMA DATE";
+        order.BankDetails = "Company Name : İkiler Otomotiv\nIBAN NO : TR 9200 0100";
+
+        var seller = Seller();
+        seller.ShortName = "İkiler";
+        seller.ProformaTemplate = ProformaTemplate.IkilerGrid;
+
+        var model = ProformaInvoiceModel.From(order, Calculate(order), seller);
+        Assert.Equal(ProformaTemplate.IkilerGrid, model.Template);
+
+        var pdf = new IkilerProformaDocument(model).GeneratePdf();
+        Assert.Equal("%PDF-", Encoding.ASCII.GetString(pdf, 0, 5));
+        Assert.True(pdf.Length > 1000);
+    }
+
+    [Fact]
+    public async Task Service_picks_the_template_from_the_sellers_ProformaTemplate()
+    {
+        using var factory = new SqliteTestFactory();
+        var customers = new CustomerService(factory);
+        var orders = new OrderService(factory, new OrderNumberGenerator(factory));
+        var ikiler = await TestData.SeedSellerAsync(
+            factory, "İkiler", ProformaTemplate.IkilerGrid, SellerNumberFormat.DateSlashSeq);
+
+        var customer = await customers.CreateAsync(new Customer
+        {
+            Name = "Buyer", AddressLine1 = "x", Country = "Lebanon", DefaultCurrency = "USD",
+        });
+        Product product;
+        await using (var db = factory.CreateDbContext())
+        {
+            product = new Product { PartNumber = "A1209", Description = "Air filter", FilterType = "air", UnitsPerCarton = 10 };
+            db.Add(product);
+            await db.SaveChangesAsync();
+        }
+        var id = await orders.CreateAsync(new Order
+        {
+            CustomerId = customer.Id, SellerCompanyId = ikiler.Id, Currency = "USD",
+            OrderDate = new DateOnly(2026, 6, 16),
+            Lines = { new OrderLine { ProductId = product.Id, Quantity = 20, UnitPrice = 7m } },
+        });
+
+        var service = new OrderDocumentService(orders, new CalculationService(), new TestHostEnvironment());
+        var doc = await service.BuildProformaAsync(id);
+
+        Assert.NotNull(doc);
+        Assert.Equal("260616-1-proforma.pdf", doc!.FileName);
+        Assert.Equal("%PDF-", Encoding.ASCII.GetString(doc.Bytes, 0, 5));
+    }
+
+    [Fact]
     public async Task Service_builds_a_named_proforma_for_a_saved_order()
     {
         using var factory = new SqliteTestFactory();

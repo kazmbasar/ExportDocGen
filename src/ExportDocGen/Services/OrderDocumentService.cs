@@ -35,8 +35,12 @@ public class OrderDocumentService(
         var model = ProformaInvoiceModel.From(order, calculation, seller,
             letterhead: ReadAsset(seller.LetterheadPath));
 
-        // Only the Filtorq template exists so far; IkilerGrid is added in M6.5c.
-        var bytes = new ProformaInvoiceDocument(model).GeneratePdf();
+        QuestPDF.Infrastructure.IDocument document = model.Template switch
+        {
+            ProformaTemplate.IkilerGrid => new IkilerProformaDocument(model),
+            _ => new ProformaInvoiceDocument(model),
+        };
+        var bytes = document.GeneratePdf();
         return new GeneratedDocument(bytes, $"{Sanitize(order.OrderNumber)}-proforma.pdf");
     }
 
