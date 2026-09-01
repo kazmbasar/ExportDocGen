@@ -213,19 +213,19 @@ See `docs/DECISIONS.md` (2026-09-01, stock catalogue import).
 - The proforma templates omit HS code and weight/carton/CBM figures — neither
   real template has them.
 
-## Packing list (M7) — v1
+## Packing list (M7 / M7b)
 
 - **`Documents/PackingListModel.cs`** — `From(order, calculation, seller,
-  letterhead?)`, mirrors `ProformaInvoiceModel`. Lines
-  (`PackingLine`) and totals come straight from the `CalculationService`
-  `OrderCalculation` (net weight, gross weight, CBM).
-- **`Documents/PackingListDocument.cs`** — **one** shared A4-portrait layout for
-  both companies; the seller's letterhead is swapped in (Filtorq full-page
-  background + wide margins; İkiler header-band image + text footer; else a text
-  header). Centered "PACKING LIST", a buyer / reference block
-  (`PROFORMA NO/DATE`, `INVOICE NO/DATE` — both the order number/date for now,
-  `INCOTERMS`, country of origin), the bordered line table
-  (`# · code · description · HS code · origin · qty · net kg · gross kg · CBM`)
-  and the shipment totals.
-- **v1** — to be tightened against a real issued packing list (M7b). See
-  `docs/DECISIONS.md` (2026-09-01, M7).
+  letterhead?)`, mirrors `ProformaInvoiceModel`. `PackingLine` and totals come
+  straight from the `CalculationService` `OrderCalculation` (net weight, gross
+  weight, CBM), plus the buyer, `InvoiceNumber` / `InvoiceDate` (fall back to the
+  order) and `Pallets`.
+- **`Documents/PackingListDocument.cs`** — **one** shared A4 layout for both
+  companies (letterhead swapped in as for the proforma), matched to the real
+  issued document (M7b): a bordered buyer box + `INVOICE NO` / `INVOICE DATE`,
+  centred "PACKING LIST", then a **13-column** grid — `PRODUCT CODE ·
+  DESCRIPTION · HS CODES · BRAND · ORIGIN · QTY` then **unit + total** for
+  volume, net weight and gross weight — with an inline totals row, followed by
+  the `TOTAL GROSS / NET WEIGHT / QUANTITY / VOLUME` box. Weights use Turkish
+  comma decimals (`DocFormat.Weight` = `771,000`, `.Volume` = `0,0473`).
+  The `.xlsx` (`OrderWorkbooks`) uses the same columns.

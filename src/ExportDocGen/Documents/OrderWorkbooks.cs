@@ -178,9 +178,9 @@ public static class OrderWorkbooks
             ws.Row(r).Style.Font.Bold = true;
             r++;
         }
-        Line("TOTAL GROSS WEIGHT", $"{gross:#,##0.000} KGS");
-        Line("TOTAL NET WEIGHT", $"{net:#,##0.000} KGS");
-        Line("TOTAL QUANTITY", $"{qty:#,##0} PCS");
+        Line("TOTAL GROSS WEIGHT", $"{DocFormat.Weight(gross)} KGS");
+        Line("TOTAL NET WEIGHT", $"{DocFormat.Weight(net)} KGS");
+        Line("TOTAL QUANTITY", $"{DocFormat.Count(qty)} PCS");
         Line("TOTAL VOLUME", volume);
         return r;
     }

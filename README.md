@@ -21,7 +21,7 @@ company's letterhead:
 |---|---|---|
 | Proforma invoice | `GET /orders/{id}/proforma.pdf` (per-company template) | — |
 | Commercial invoice | `…/commercial-invoice.pdf` | `…/commercial-invoice.xlsx` |
-| Packing list | `…/packing-list.pdf` (v1 layout — M7b) | `…/packing-list.xlsx` |
+| Packing list | `…/packing-list.pdf` | `…/packing-list.xlsx` |
 
 Each company keeps its own order-number sequence; the customer's payment type and
 a free-text bank block flow onto the documents; optional `Invoice no. / date /

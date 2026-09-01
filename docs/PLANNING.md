@@ -123,8 +123,7 @@ output.
       - **Order list** (`/orders`) — Exporter column + company filter; quick
         filter also matches the exporter; per-row "Packing list PDF" button
         (also on the order editor). Newest-first ordering (`CreatedUtc`).
-      - v1 layout — to be tightened against a real issued packing list (M7b),
-        the same loop as M6 → M6b.
+      - Reworked to the real issued layout in M7b (2026-09-02) — see below.
 - [x] **Real stock catalogue.** _(2026-09-01)_ Kazim's stock database
       (`stocks.ods`, ~19,400 rows) replaces the sample products. `Product` gains
       Origin / Brand / per-unit CBM and **loses the carton model**;
@@ -139,14 +138,19 @@ output.
       `…/{packing-list|commercial-invoice}.xlsx`. New optional `Order` fields
       `InvoiceNumber` / `InvoiceDate` / `Pallets` drive `INVOICE NO` / `DATE` and
       `TOTAL VOLUME : N PALLETS`. 42 tests. See `docs/DECISIONS.md` (2026-09-02).
-- [ ] **M7b — Match the packing list PDF to the real issued document.** Sample
-      is now in hand (`~/Downloads/sample PACKING LIST.pdf`, 13 columns). The
-      `.xlsx` already matches; the PDF still uses the M7 v1 layout.
+- [x] **M7b — Packing list PDF matched to the real issued document.**
+      _(2026-09-02)_ `PackingListDocument` reworked to the 13-column grid of
+      `~/Downloads/sample PACKING LIST.pdf` — `PRODUCT CODE · DESCRIPTION ·
+      HS CODES · BRAND · ORIGIN · QTY` then **unit + total** for volume, net
+      weight and gross weight, an inline totals row, and the shipment totals
+      box. Turkish comma decimals (`DocFormat.Weight` / `.Volume`). The
+      per-company letterhead is kept (the sample has none — Kazim's choice).
 - [ ] **Stock import UX.** A browser `/products/import` page; real gross weights;
       price data.
+- [ ] Filtorq-specific commercial-invoice layout (if their real one differs).
 
-After M7b: use it for a real order end to end, then pick up stretch goals or
-start the cross-reference project.
+Next: use it for a real order end to end, then pick up stretch goals or start
+the cross-reference project.
 
 ## Excel order import (M5) — as built
 

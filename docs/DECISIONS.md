@@ -5,6 +5,21 @@ revisit.
 
 ---
 
+## 2026-09-02 — M7b: packing list PDF matched to the real document.
+
+`~/Downloads/sample PACKING LIST.pdf` (a real İkiler → LLC Global Expo issued
+packing list) arrived. `PackingListDocument` was reworked from the M7 v1
+(9-column, portrait) to the real **13-column** grid: `PRODUCT CODE · DESCRIPTION
+· HS CODES · BRAND · ORIGIN · QTY`, then **unit and total** columns for volume,
+net weight and gross weight; an inline totals row; then the `TOTAL GROSS / NET
+WEIGHT / QUANTITY / VOLUME` box. Header block trimmed to the buyer box +
+`INVOICE NO` / `INVOICE DATE` (the sample has no proforma-no / incoterm /
+country-of-origin lines). Weights print with Turkish comma decimals and trailing
+zeros (`771,000`, `0,0473`) — `DocFormat.Weight` (3 dp) and `DocFormat.Volume`
+(4 dp) changed to comma-decimal, which also affects the commercial invoice's
+weight block (correct — same company style). The per-company letterhead is kept
+even though the sample is a plain Excel print (Kazim's earlier decision).
+
 ## 2026-09-02 — M8: commercial invoice + Excel downloads.
 
 Kazim supplied a real commercial invoice
@@ -37,8 +52,7 @@ LLC Global Expo shipment.
   real commercial invoice differs.
 
 **Revisit if:** Filtorq's real commercial invoice differs; a real pallet
-calculation is wanted; the proforma needs Excel too; the packing-list PDF gets
-reworked to the sample (still "M7b").
+calculation is wanted; the proforma needs Excel too.
 
 ## 2026-09-01 — Real stock catalogue import.
 

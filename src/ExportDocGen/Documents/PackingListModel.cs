@@ -40,7 +40,7 @@ public sealed record PackingListModel
     /// <summary>"11 PALLETS" when <see cref="Pallets"/> is set, else "{cbm} CBM".</summary>
     public string TotalVolumeText => Pallets is { } p
         ? $"{p} PALLET{(p == 1 ? "" : "S")}"
-        : $"{DocFormat.Weight(TotalVolumeM3)} CBM";
+        : $"{DocFormat.Volume(TotalVolumeM3)} CBM";
 
     /// <summary><paramref name="calculation"/> lines must correspond to
     /// <paramref name="order"/>.Lines with a product, ordered by

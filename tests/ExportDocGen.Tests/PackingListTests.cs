@@ -86,6 +86,14 @@ public class PackingListTests
     }
 
     [Fact]
+    public void Weights_and_volumes_use_the_company_comma_format()
+    {
+        Assert.Equal("771,000", DocFormat.Weight(771m));
+        Assert.Equal("3,358", DocFormat.Weight(3.3579m));
+        Assert.Equal("0,0473", DocFormat.Volume(0.04729m));
+    }
+
+    [Fact]
     public void Document_renders_a_pdf_with_and_without_a_letterhead()
     {
         var order = SampleOrder();

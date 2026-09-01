@@ -10,13 +10,24 @@ public static class DocFormat
 {
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
 
+    // Comma decimals, no thousands separator — the company's convention on the
+    // packing list ("771,000", "0,0473").
+    private static readonly NumberFormatInfo Decimals = new()
+    {
+        NumberDecimalSeparator = ",",
+        NumberGroupSeparator = "",
+    };
+
     /// <summary>Dates as the company writes them: <c>24.08.2026</c>.</summary>
     public static string Date(DateOnly value) => value.ToString("dd.MM.yyyy", Inv);
 
-    /// <summary>Weights / volumes: up to 3 decimals, no thousands separator.</summary>
-    public static string Weight(decimal value) => value.ToString("0.###", Inv);
+    /// <summary>Weights: 3 decimals, comma separator — <c>771,000</c>.</summary>
+    public static string Weight(decimal value) => value.ToString("0.000", Decimals);
 
-    /// <summary>Whole counts (quantities, cartons).</summary>
+    /// <summary>Volumes (CBM): 4 decimals, comma separator — <c>0,0473</c>.</summary>
+    public static string Volume(decimal value) => value.ToString("0.0000", Decimals);
+
+    /// <summary>Whole counts (quantities).</summary>
     public static string Count(int value) => value.ToString("N0", Inv);
 
     /// <summary>Money the company's way: a currency-symbol prefix, comma
