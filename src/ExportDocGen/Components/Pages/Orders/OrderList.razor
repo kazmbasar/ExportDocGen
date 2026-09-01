@@ -45,16 +45,22 @@
         </TemplateColumn>
         <TemplateColumn Title="" Sortable="false" Filterable="false" CellClass="d-flex justify-end">
             <CellTemplate>
-                <MudTooltip Text="Proforma invoice PDF">
-                    <MudIconButton Icon="@Icons.Material.Filled.PictureAsPdf" Size="Size.Small"
-                                   Href="@($"/orders/{context.Item.Id}/proforma.pdf")" Target="_blank" />
-                </MudTooltip>
-                <MudTooltip Text="Packing list PDF">
-                    <MudIconButton Icon="@Icons.Material.Filled.Inventory2" Size="Size.Small"
-                                   Href="@($"/orders/{context.Item.Id}/packing-list.pdf")" Target="_blank" />
-                </MudTooltip>
+                @{ var id = context.Item.Id; }
+                <MudMenu Icon="@Icons.Material.Filled.Download" Size="Size.Small" Dense="true"
+                         AriaLabel="Documents">
+                    <MudMenuItem Href="@($"/orders/{id}/proforma.pdf")" Target="_blank"
+                                 Icon="@Icons.Material.Filled.PictureAsPdf">Proforma invoice (PDF)</MudMenuItem>
+                    <MudMenuItem Href="@($"/orders/{id}/commercial-invoice.pdf")" Target="_blank"
+                                 Icon="@Icons.Material.Filled.PictureAsPdf">Commercial invoice (PDF)</MudMenuItem>
+                    <MudMenuItem Href="@($"/orders/{id}/commercial-invoice.xlsx")"
+                                 Icon="@Icons.Material.Filled.GridOn">Commercial invoice (Excel)</MudMenuItem>
+                    <MudMenuItem Href="@($"/orders/{id}/packing-list.pdf")" Target="_blank"
+                                 Icon="@Icons.Material.Filled.PictureAsPdf">Packing list (PDF)</MudMenuItem>
+                    <MudMenuItem Href="@($"/orders/{id}/packing-list.xlsx")"
+                                 Icon="@Icons.Material.Filled.GridOn">Packing list (Excel)</MudMenuItem>
+                </MudMenu>
                 <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
-                               Href="@($"/orders/{context.Item.Id}")" />
+                               Href="@($"/orders/{id}")" />
                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
                                OnClick="@(() => Delete(context.Item))" />
             </CellTemplate>

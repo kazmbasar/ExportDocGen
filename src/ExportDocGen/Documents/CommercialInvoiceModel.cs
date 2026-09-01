@@ -3,13 +3,12 @@ using ExportDocGen.Services;
 
 namespace ExportDocGen.Documents;
 
-/// <summary>Flat, print-ready data for one packing list — everything
-/// <see cref="PackingListDocument"/> needs, no database or config lookups left.
-/// Mirrors <see cref="ProformaInvoiceModel"/>; build it with <see cref="From"/>.</summary>
-public sealed record PackingListModel
+/// <summary>Flat, print-ready data for one commercial invoice — the document
+/// that travels with the shipment. Combines the proforma's line/price columns
+/// with the packing list's weight totals. Build it with <see cref="From"/>.</summary>
+public sealed record CommercialInvoiceModel
 {
     public required string SellerName { get; init; }
-    public required string SellerShortName { get; init; }
     public required ProformaTemplate Template { get; init; }
     public string CountryOfOrigin { get; init; } = "Türkiye";
     public byte[]? Letterhead { get; init; }
@@ -18,26 +17,25 @@ public sealed record PackingListModel
     public string BuyerAddress { get; init; } = "";
     public string? BuyerPhone { get; init; }
     public string? BuyerEmail { get; init; }
+    public string? BuyerTaxId { get; init; }
 
-    /// <summary>Order number — the packing list also carries the shipment's
-    /// commercial-invoice number (<see cref="InvoiceNumber"/>).</summary>
-    public required string Reference { get; init; }
-    public required DateOnly Date { get; init; }
-    /// <summary>Commercial-invoice number / date — falls back to the order.</summary>
     public required string InvoiceNumber { get; init; }
     public required DateOnly InvoiceDate { get; init; }
+    public required string Currency { get; init; }
     public required string Incoterm { get; init; }
-    public int? Pallets { get; init; }
+    public string? PaymentTerms { get; init; }
+    public string? BankDetailsText { get; init; }
     public string? Notes { get; init; }
 
-    public required IReadOnlyList<PackingLine> Lines { get; init; }
+    public required IReadOnlyList<CommercialLine> Lines { get; init; }
 
+    public required decimal TotalAmount { get; init; }
     public required int TotalQuantity { get; init; }
     public required decimal TotalNetWeightKg { get; init; }
     public required decimal TotalGrossWeightKg { get; init; }
     public required decimal TotalVolumeM3 { get; init; }
+    public int? Pallets { get; init; }
 
-    /// <summary>"11 PALLETS" when <see cref="Pallets"/> is set, else "{cbm} CBM".</summary>
     public string TotalVolumeText => Pallets is { } p
         ? $"{p} PALLET{(p == 1 ? "" : "S")}"
         : $"{DocFormat.Weight(TotalVolumeM3)} CBM";
@@ -46,7 +44,7 @@ public sealed record PackingListModel
     /// <paramref name="order"/>.Lines with a product, ordered by
     /// <see cref="OrderLine.LineNumber"/> — same contract as
     /// <see cref="ProformaInvoiceModel.From"/>.</summary>
-    public static PackingListModel From(
+    public static CommercialInvoiceModel From(
         Order order,
         OrderCalculation calculation,
         SellerCompany seller,
@@ -57,12 +55,14 @@ public sealed record PackingListModel
             .OrderBy(l => l.LineNumber)
             .ToList();
 
-        var lines = new List<PackingLine>(orderLines.Count);
+        var lines = new List<CommercialLine>(orderLines.Count);
         for (var i = 0; i < orderLines.Count; i++)
         {
             var line = orderLines[i];
-            var calc = i < calculation.Lines.Count ? calculation.Lines[i] : null;
-            lines.Add(new PackingLine(
+            var amount = i < calculation.Lines.Count
+                ? calculation.Lines[i].LineTotal
+                : line.Quantity * line.UnitPrice;
+            lines.Add(new CommercialLine(
                 No: i + 1,
                 Code: line.Product!.PartNumber,
                 Description: DocFormat.FilterDescription(line.Product!),
@@ -70,43 +70,48 @@ public sealed record PackingListModel
                 Brand: line.Product!.Brand,
                 Origin: line.Product!.Origin,
                 Quantity: line.Quantity,
-                NetWeightKg: calc?.NetWeightKg ?? line.Quantity * line.Product!.NetWeightKg,
-                GrossWeightKg: calc?.ShipGrossWeightKg ?? line.Quantity * line.Product!.GrossWeightKg,
-                VolumeM3: calc?.VolumeM3 ?? line.Quantity * line.Product!.UnitVolumeM3));
+                UnitPrice: line.UnitPrice,
+                Amount: amount));
         }
 
-        return new PackingListModel
+        var customer = order.Customer;
+
+        return new CommercialInvoiceModel
         {
             SellerName = seller.Name,
-            SellerShortName = seller.ShortName,
             Template = seller.ProformaTemplate,
             CountryOfOrigin = seller.CountryOfOrigin,
             Letterhead = letterhead,
 
-            BuyerName = order.Customer?.Name ?? "",
-            BuyerAddress = DocFormat.BuyerAddress(order.Customer),
-            BuyerPhone = order.Customer?.ContactPhone,
-            BuyerEmail = order.Customer?.ContactEmail,
+            BuyerName = customer?.Name ?? "",
+            BuyerAddress = DocFormat.BuyerAddress(customer),
+            BuyerPhone = customer?.ContactPhone,
+            BuyerEmail = customer?.ContactEmail,
+            BuyerTaxId = customer?.TaxId,
 
-            Reference = order.OrderNumber,
-            Date = order.OrderDate,
             InvoiceNumber = string.IsNullOrWhiteSpace(order.InvoiceNumber) ? order.OrderNumber : order.InvoiceNumber,
             InvoiceDate = order.InvoiceDate ?? order.OrderDate,
+            Currency = order.Currency,
             Incoterm = string.IsNullOrWhiteSpace(order.Incoterm) ? "-" : order.Incoterm,
-            Pallets = order.Pallets,
+            PaymentTerms = order.PaymentTerms,
+            BankDetailsText = string.IsNullOrWhiteSpace(order.BankDetails)
+                ? seller.DefaultBankDetails
+                : order.BankDetails,
             Notes = order.Notes,
 
             Lines = lines,
+            TotalAmount = calculation.OrderTotal,
             TotalQuantity = lines.Sum(l => l.Quantity),
             TotalNetWeightKg = calculation.TotalNetWeightKg,
             TotalGrossWeightKg = calculation.TotalGrossWeightKg,
             TotalVolumeM3 = calculation.TotalVolumeM3,
+            Pallets = order.Pallets,
         };
     }
 }
 
-/// <summary>One line on the packing list.</summary>
-public sealed record PackingLine(
+/// <summary>One line on the commercial invoice.</summary>
+public sealed record CommercialLine(
     int No,
     string Code,
     string Description,
@@ -114,6 +119,5 @@ public sealed record PackingLine(
     string? Brand,
     string? Origin,
     int Quantity,
-    decimal NetWeightKg,
-    decimal GrossWeightKg,
-    decimal VolumeM3);
+    decimal UnitPrice,
+    decimal Amount);

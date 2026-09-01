@@ -124,16 +124,24 @@ output.
         filter also matches the exporter; per-row "Packing list PDF" button
         (also on the order editor). Newest-first ordering (`CreatedUtc`).
       - v1 layout — to be tightened against a real issued packing list (M7b),
-        the same loop as M6 → M6b. 36 tests.
+        the same loop as M6 → M6b.
 - [x] **Real stock catalogue.** _(2026-09-01)_ Kazim's stock database
       (`stocks.ods`, ~19,400 rows) replaces the sample products. `Product` gains
       Origin / Brand / per-unit CBM and **loses the carton model**;
       `CalculationService` is now pure per-unit arithmetic (gross = net × 1.05).
       `StockCatalogImportService` + a `dotnet run -- import-stock` command load
       ~16,600 filter rows. See `docs/DECISIONS.md`.
-- [ ] **M7b — Match the packing list to a real issued document.** Kazim to
-      supply one; refine `PackingListDocument` (per-company split only if their
-      real layouts differ).
+- [x] **M8 — Commercial invoice + Excel downloads.** _(2026-09-02)_ New
+      commercial-invoice PDF (`CommercialInvoiceModel` / `Document`, one shared
+      layout, per-company letterhead) at
+      `GET /orders/{id}/commercial-invoice.pdf`. Editable `.xlsx` downloads for
+      the packing list and commercial invoice (`OrderWorkbooks`, ClosedXML) at
+      `…/{packing-list|commercial-invoice}.xlsx`. New optional `Order` fields
+      `InvoiceNumber` / `InvoiceDate` / `Pallets` drive `INVOICE NO` / `DATE` and
+      `TOTAL VOLUME : N PALLETS`. 42 tests. See `docs/DECISIONS.md` (2026-09-02).
+- [ ] **M7b — Match the packing list PDF to the real issued document.** Sample
+      is now in hand (`~/Downloads/sample PACKING LIST.pdf`, 13 columns). The
+      `.xlsx` already matches; the PDF still uses the M7 v1 layout.
 - [ ] **Stock import UX.** A browser `/products/import` page; real gross weights;
       price data.
 

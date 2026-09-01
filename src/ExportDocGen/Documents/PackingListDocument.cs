@@ -93,8 +93,8 @@ public sealed class PackingListDocument(PackingListModel model) : IDocument
         {
             Line(c, "PROFORMA NO", model.Reference);
             Line(c, "PROFORMA DATE", DocFormat.Date(model.Date));
-            Line(c, "INVOICE NO", model.Reference);
-            Line(c, "INVOICE DATE", DocFormat.Date(model.Date));
+            Line(c, "INVOICE NO", model.InvoiceNumber);
+            Line(c, "INVOICE DATE", DocFormat.Date(model.InvoiceDate));
             Line(c, "INCOTERMS", model.Incoterm);
         });
 
@@ -178,7 +178,7 @@ public sealed class PackingListDocument(PackingListModel model) : IDocument
         Row("TOTAL QUANTITY", $"{DocFormat.Count(model.TotalQuantity)} PCS");
         Row("TOTAL NET WEIGHT", $"{DocFormat.Weight(model.TotalNetWeightKg)} KGS");
         Row("TOTAL GROSS WEIGHT", $"{DocFormat.Weight(model.TotalGrossWeightKg)} KGS");
-        Row("TOTAL VOLUME", $"{DocFormat.Weight(model.TotalVolumeM3)} CBM");
+        Row("TOTAL VOLUME", model.TotalVolumeText);
 
         void Row(string label, string value) => col.Item().Row(r =>
         {

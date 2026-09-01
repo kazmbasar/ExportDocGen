@@ -80,31 +80,41 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 // Generated documents (opened in a new browser tab from the order screens).
-app.MapGet("/orders/{id:int}/proforma.pdf", (int id, OrderDocumentService documents, HttpContext http) =>
-    StreamDocument(http, "proforma invoice", () => documents.BuildProformaAsync(id)));
+app.MapGet("/orders/{id:int}/proforma.pdf", (int id, OrderDocumentService d, HttpContext http) =>
+    StreamDocument(http, "proforma invoice", () => d.BuildProformaAsync(id)));
 
-app.MapGet("/orders/{id:int}/packing-list.pdf", (int id, OrderDocumentService documents, HttpContext http) =>
-    StreamDocument(http, "packing list", () => documents.BuildPackingListAsync(id)));
+app.MapGet("/orders/{id:int}/packing-list.pdf", (int id, OrderDocumentService d, HttpContext http) =>
+    StreamDocument(http, "packing list", () => d.BuildPackingListAsync(id)));
+
+app.MapGet("/orders/{id:int}/packing-list.xlsx", (int id, OrderDocumentService d, HttpContext http) =>
+    StreamDocument(http, "packing list", () => d.BuildPackingListXlsxAsync(id)));
+
+app.MapGet("/orders/{id:int}/commercial-invoice.pdf", (int id, OrderDocumentService d, HttpContext http) =>
+    StreamDocument(http, "commercial invoice", () => d.BuildCommercialInvoiceAsync(id)));
+
+app.MapGet("/orders/{id:int}/commercial-invoice.xlsx", (int id, OrderDocumentService d, HttpContext http) =>
+    StreamDocument(http, "commercial invoice", () => d.BuildCommercialInvoiceXlsxAsync(id)));
 
 static async Task<IResult> StreamDocument(
     HttpContext http, string label, Func<Task<GeneratedDocument?>> build)
 {
-    GeneratedDocument? pdf;
+    GeneratedDocument? doc;
     try
     {
-        pdf = await build();
+        doc = await build();
     }
     catch (Exception ex)
     {
         return Results.Problem($"Could not generate the {label}: {ex.Message}");
     }
 
-    if (pdf is null)
+    if (doc is null)
         return Results.NotFound();
 
-    // inline (not attachment) so the PDF links preview in a new tab
-    http.Response.Headers.ContentDisposition = $"inline; filename=\"{pdf.FileName}\"";
-    return Results.Bytes(pdf.Bytes, GeneratedDocument.PdfContentType);
+    // PDFs preview inline in a new tab; spreadsheets download.
+    var disposition = doc.IsXlsx ? "attachment" : "inline";
+    http.Response.Headers.ContentDisposition = $"{disposition}; filename=\"{doc.FileName}\"";
+    return Results.Bytes(doc.Bytes, doc.ContentType);
 }
 
 app.Run();

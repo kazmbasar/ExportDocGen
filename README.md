@@ -6,21 +6,27 @@ Excel/Word copy-paste.
 
 ## Status
 
-**M7 (Packing list PDF + order list polish) complete.** Started 2026-08-31.
-Solution builds, runs, and has 36 passing tests. SQLite database, EF Core
+**M8 (Commercial invoice + Excel downloads) complete.** Started 2026-08-31.
+Solution builds, runs, and has 42 passing tests. SQLite database, EF Core
 migrations, seed data, the MudBlazor UI shell, Customer/Product CRUD, the order
-builder, live calculations, Excel order import, a **proforma invoice PDF** and a
-**packing list PDF** per order.
+builder, live calculations, Excel order import, the real ~16,600-row stock
+catalogue, and three export documents per order.
 
 The group's **two exporting companies** (Filtorq, İkiler Otomotiv) are modelled
 as `SellerCompany` rows. Each **customer** is assigned an exporter company; every
-order for that customer is issued by it — the proforma renders from that
-company's own template (`GET /orders/{id}/proforma.pdf`), the packing list from
-one shared layout with the company's letterhead
-(`GET /orders/{id}/packing-list.pdf`), each company keeps its own order-number
-sequence, and the customer's payment type + a free-text bank block flow onto the
-proforma. The packing-list layout is a v1 to be tightened against a real issued
-document (M7b). See [`docs/PLANNING.md`](docs/PLANNING.md).
+order for that customer is issued by it, and each document renders with that
+company's letterhead:
+
+| Document | PDF | Excel |
+|---|---|---|
+| Proforma invoice | `GET /orders/{id}/proforma.pdf` (per-company template) | — |
+| Commercial invoice | `…/commercial-invoice.pdf` | `…/commercial-invoice.xlsx` |
+| Packing list | `…/packing-list.pdf` (v1 layout — M7b) | `…/packing-list.xlsx` |
+
+Each company keeps its own order-number sequence; the customer's payment type and
+a free-text bank block flow onto the documents; optional `Invoice no. / date /
+pallets` fields on the order feed the commercial invoice and packing list.
+See [`docs/PLANNING.md`](docs/PLANNING.md).
 
 Seller company details (names, bank text, letterhead paths) are seeded in
 `src/ExportDocGen/Data/SeedData.cs` — there is no editing screen yet. Swap
@@ -97,7 +103,7 @@ ExportDocGen/
         ├── Data/               # AppDbContext, Entities/ (incl. SellerCompany), SeedData
         ├── Services/           # Customer/Product/Order/SellerCompany/Calculation services,
         │                       #   OrderNumberGenerator, ExcelOrderImportParser, OrderDocumentService
-        ├── Documents/          # QuestPDF: DocFormat, proforma (Filtorq/İkiler) + packing-list model & document, MoneyWords
+        ├── Documents/          # DocFormat/MoneyWords, proforma + packing-list + commercial-invoice models & QuestPDF docs, OrderWorkbooks (ClosedXML)
         ├── Migrations/         # EF Core migrations
         └── Components/
             ├── Layout/

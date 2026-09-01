@@ -85,6 +85,9 @@ public class OrderService(
         existing.BankDetails = order.BankDetails;
         existing.DeliveryTime = order.DeliveryTime;
         existing.Validity = order.Validity;
+        existing.InvoiceNumber = order.InvoiceNumber;
+        existing.InvoiceDate = order.InvoiceDate;
+        existing.Pallets = order.Pallets;
         existing.Notes = order.Notes;
 
         Renumber(order.Lines);

@@ -64,6 +64,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.Property(o => o.OrderNumber).HasMaxLength(50).IsRequired();
             e.Property(o => o.Currency).HasMaxLength(3).IsRequired();
+            e.Property(o => o.InvoiceNumber).HasMaxLength(50);
             e.Property(o => o.DeliveryTime).HasMaxLength(120);
             e.Property(o => o.Validity).HasMaxLength(120);
             e.HasIndex(o => o.OrderNumber).IsUnique();

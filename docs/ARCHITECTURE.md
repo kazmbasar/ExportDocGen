@@ -52,7 +52,10 @@ src/ExportDocGen/
 │   ├── IkilerProformaDocument.cs # ✅ M6.5 — İkiler proforma (IkilerGrid)
 │   ├── MoneyWords.cs             # ✅ M6.5 — grand total spelled out (Humanizer.Core)
 │   ├── PackingListModel.cs       # ✅ M7 — flat print model + From(order, calc, seller)
-│   └── PackingListDocument.cs    # ✅ M7 — one shared A4-portrait layout, letterhead per seller
+│   ├── PackingListDocument.cs    # ✅ M7 — one shared A4-portrait layout, letterhead per seller
+│   ├── CommercialInvoiceModel.cs # ✅ M8 — flat print model
+│   ├── CommercialInvoiceDocument.cs # ✅ M8 — one shared layout, letterhead per seller
+│   └── OrderWorkbooks.cs         # ✅ M8 — ClosedXML: packing list + commercial invoice .xlsx
 ├── wwwroot/
 │   ├── proforma-letterhead.png   # ✅ M6 — Filtorq full-page A4 letterhead (PDF background)
 │   └── ikiler-letterhead.png     # ✅ M6.5 — İkiler header band (drawn at page top)
@@ -194,9 +197,19 @@ See `docs/DECISIONS.md` (2026-09-01, stock catalogue import).
   `BuildPackingListAsync` then build the model, **pick the document class by
   `SellerCompany.ProformaTemplate`**, and return `GeneratedDocument(bytes,
   fileName)`.
-- **Endpoints:** `GET /orders/{id}/proforma.pdf` and
-  `GET /orders/{id}/packing-list.pdf` in `Program.cs` (shared `StreamDocument`
-  helper — try/catch → `Problem`, 404, inline disposition).
+- **Endpoints** in `Program.cs` (shared `StreamDocument` helper — try/catch →
+  `Problem`, 404; `inline` for PDF, `attachment` for `.xlsx`):
+  `GET /orders/{id}/proforma.pdf`,
+  `/orders/{id}/packing-list.pdf` · `.xlsx`,
+  `/orders/{id}/commercial-invoice.pdf` · `.xlsx`.
+- **Commercial invoice (M8):** `CommercialInvoiceModel` +
+  `CommercialInvoiceDocument` — one shared layout, per-company letterhead (same
+  `ProformaTemplate` branch as the packing list). `Order.InvoiceNumber` /
+  `InvoiceDate` / `Pallets` (all optional) feed the `INVOICE NO` / `DATE` and the
+  `TOTAL VOLUME : N PALLETS` line, falling back to the order number / date / CBM.
+- **Excel (M8):** `OrderWorkbooks` (ClosedXML) builds the packing list and
+  commercial invoice as editable `.xlsx` (plain values, no formulas) from the
+  same models. The packing-list workbook uses the real 13-column layout.
 - The proforma templates omit HS code and weight/carton/CBM figures — neither
   real template has them.
 

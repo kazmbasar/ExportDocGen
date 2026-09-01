@@ -21,14 +21,19 @@ else
         <MudSpacer />
         @if (!IsNew)
         {
-            <MudButton StartIcon="@Icons.Material.Filled.PictureAsPdf"
-                       Href="@($"/orders/{Id}/proforma.pdf")" Target="_blank">
-                Proforma PDF
-            </MudButton>
-            <MudButton StartIcon="@Icons.Material.Filled.Inventory2"
-                       Href="@($"/orders/{Id}/packing-list.pdf")" Target="_blank">
-                Packing list PDF
-            </MudButton>
+            <MudMenu Label="Documents" Variant="Variant.Filled" Color="Color.Secondary"
+                     StartIcon="@Icons.Material.Filled.Download" EndIcon="@Icons.Material.Filled.ArrowDropDown">
+                <MudMenuItem Href="@Doc("proforma.pdf")" Target="_blank"
+                             Icon="@Icons.Material.Filled.PictureAsPdf">Proforma invoice (PDF)</MudMenuItem>
+                <MudMenuItem Href="@Doc("commercial-invoice.pdf")" Target="_blank"
+                             Icon="@Icons.Material.Filled.PictureAsPdf">Commercial invoice (PDF)</MudMenuItem>
+                <MudMenuItem Href="@Doc("commercial-invoice.xlsx")"
+                             Icon="@Icons.Material.Filled.GridOn">Commercial invoice (Excel)</MudMenuItem>
+                <MudMenuItem Href="@Doc("packing-list.pdf")" Target="_blank"
+                             Icon="@Icons.Material.Filled.PictureAsPdf">Packing list (PDF)</MudMenuItem>
+                <MudMenuItem Href="@Doc("packing-list.xlsx")"
+                             Icon="@Icons.Material.Filled.GridOn">Packing list (Excel)</MudMenuItem>
+            </MudMenu>
         }
         <MudButton OnClick="Cancel">Cancel</MudButton>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save" Disabled="_saving">
@@ -71,11 +76,23 @@ else
             <MudItem xs="6" sm="3" md="2">
                 <MudTextField @bind-Value="_order.Validity" Label="Validity" />
             </MudItem>
-            <MudItem xs="12" md="6">
-                <MudTextField @bind-Value="_order.BankDetails" Label="Bank details" Lines="6"
-                              HelperText="Printed verbatim on the proforma" />
+            <MudItem xs="6" sm="4" md="3">
+                <MudTextField @bind-Value="_order.InvoiceNumber" Label="Invoice no."
+                              HelperText="Commercial invoice — blank uses the order number" />
             </MudItem>
-            <MudItem xs="12" md="6">
+            <MudItem xs="6" sm="4" md="2">
+                <MudDatePicker Label="Invoice date" Date="_invoiceDate"
+                               DateChanged="d => _invoiceDate = d" Clearable="true" />
+            </MudItem>
+            <MudItem xs="6" sm="4" md="2">
+                <MudNumericField @bind-Value="_order.Pallets" Label="Pallets" Min="0"
+                                 HelperText="Blank shows CBM" />
+            </MudItem>
+            <MudItem xs="12" md="7">
+                <MudTextField @bind-Value="_order.BankDetails" Label="Bank details" Lines="6"
+                              HelperText="Printed verbatim on the proforma / commercial invoice" />
+            </MudItem>
+            <MudItem xs="12" md="5">
                 <MudTextField @bind-Value="_order.Notes" Label="Notes" Lines="2" />
             </MudItem>
         </MudGrid>
@@ -173,8 +190,11 @@ else
 
     private bool IsNew => Id is null;
 
+    private string Doc(string kind) => $"/orders/{Id}/{kind}";
+
     private Order _order = new();
     private DateTime? _orderDate = DateTime.Today;
+    private DateTime? _invoiceDate;
     private List<Customer> _customers = [];
     private List<SellerCompany> _sellers = [];
     private List<Product> _products = [];
@@ -237,6 +257,7 @@ else
             }
             _order = loaded;
             _orderDate = _order.OrderDate.ToDateTime(TimeOnly.MinValue);
+            _invoiceDate = _order.InvoiceDate?.ToDateTime(TimeOnly.MinValue);
 
             // Include products that are on the order but no longer in the active catalog.
             foreach (var line in _order.Lines.Where(l => l.Product is not null))
@@ -307,6 +328,7 @@ else
         }
 
         _order.OrderDate = DateOnly.FromDateTime(_orderDate ?? DateTime.Today);
+        _order.InvoiceDate = _invoiceDate is { } d ? DateOnly.FromDateTime(d) : null;
         _order.Currency = _order.Currency.Trim().ToUpperInvariant();
 
         _saving = true;

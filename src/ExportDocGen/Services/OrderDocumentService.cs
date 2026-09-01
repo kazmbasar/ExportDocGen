@@ -46,6 +46,43 @@ public class OrderDocumentService(
         return new GeneratedDocument(bytes, $"{Sanitize(order.OrderNumber)}-packing-list.pdf");
     }
 
+    /// <summary>Builds the commercial invoice PDF for an order, or <c>null</c> if
+    /// the order does not exist.</summary>
+    public async Task<GeneratedDocument?> BuildCommercialInvoiceAsync(int orderId)
+    {
+        if (await PrepareAsync(orderId) is not { } p)
+            return null;
+        var (order, calculation, seller, letterhead) = p;
+
+        var model = CommercialInvoiceModel.From(order, calculation, seller, letterhead);
+        var bytes = new CommercialInvoiceDocument(model).GeneratePdf();
+        return new GeneratedDocument(bytes, $"{Sanitize(order.OrderNumber)}-commercial-invoice.pdf");
+    }
+
+    /// <summary>Builds the packing list as an editable <c>.xlsx</c> workbook.</summary>
+    public async Task<GeneratedDocument?> BuildPackingListXlsxAsync(int orderId)
+    {
+        if (await PrepareAsync(orderId) is not { } p)
+            return null;
+        var (order, calculation, seller, _) = p;
+
+        var model = PackingListModel.From(order, calculation, seller);
+        var bytes = OrderWorkbooks.PackingList(model);
+        return new GeneratedDocument(bytes, $"{Sanitize(order.OrderNumber)}-packing-list.xlsx");
+    }
+
+    /// <summary>Builds the commercial invoice as an editable <c>.xlsx</c> workbook.</summary>
+    public async Task<GeneratedDocument?> BuildCommercialInvoiceXlsxAsync(int orderId)
+    {
+        if (await PrepareAsync(orderId) is not { } p)
+            return null;
+        var (order, calculation, seller, _) = p;
+
+        var model = CommercialInvoiceModel.From(order, calculation, seller);
+        var bytes = OrderWorkbooks.CommercialInvoice(model);
+        return new GeneratedDocument(bytes, $"{Sanitize(order.OrderNumber)}-commercial-invoice.xlsx");
+    }
+
     /// <summary>Loads the order with its seller, runs the calculation and reads
     /// the letterhead — the shared front half of every document build. The line
     /// ordering here must match <c>*Model.From</c>.</summary>
@@ -95,4 +132,9 @@ public class OrderDocumentService(
 public sealed record GeneratedDocument(byte[] Bytes, string FileName)
 {
     public const string PdfContentType = "application/pdf";
+    public const string XlsxContentType =
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+    public bool IsXlsx => FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase);
+    public string ContentType => IsXlsx ? XlsxContentType : PdfContentType;
 }

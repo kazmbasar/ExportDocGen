@@ -5,6 +5,41 @@ revisit.
 
 ---
 
+## 2026-09-02 — M8: commercial invoice + Excel downloads.
+
+Kazim supplied a real commercial invoice
+(`~/Downloads/sample commercial invoice.pdf`) and the real issued packing list
+(`~/Downloads/sample PACKING LIST.pdf`) — both plain Excel prints of an İkiler →
+LLC Global Expo shipment.
+
+**Decided:**
+- **New document: commercial invoice.** `CommercialInvoiceModel` +
+  `CommercialInvoiceDocument` (one shared layout, per-company letterhead — the
+  same `ProformaTemplate` branch as `PackingListDocument`). Sections: buyer box +
+  `INVOICE NO` / `INVOICE DATE`; green line table `№ · CODE · DESCRIPTION ·
+  HS CODES · BRAND · ORIGIN · QUANTITY · UNIT PRICE · TOTAL PRICE`;
+  `TERMS OF DELIVERY (<incoterm>)` / `TERMS OF PAYMENT (<terms>)`; grand total;
+  `TOTAL GROSS / NET WEIGHT / QUANTITY / VOLUME` block; verbatim bank block.
+  Money `$3.555,00`. `GET /orders/{id}/commercial-invoice.pdf`.
+- **Editable `.xlsx` downloads** for the packing list and the commercial invoice
+  (`OrderWorkbooks`, ClosedXML — plain cell values, no formulas). Not the
+  proforma. `GET /orders/{id}/{packing-list|commercial-invoice}.xlsx`
+  (Content-Disposition `attachment`). The packing-list workbook uses the real
+  13-column layout (unit + total per volume / net / gross weight) even though the
+  packing-list **PDF** stays as the M7 v1 for now.
+- **New editable `Order` fields:** `InvoiceNumber`, `InvoiceDate`, `Pallets`
+  (all optional). `INVOICE NO` / `DATE` fall back to the order number / date;
+  `TOTAL VOLUME` shows `{Pallets} PALLETS` when set, else `{cbm} CBM`. Migration
+  `AddOrderInvoiceFields`. The packing list now shows these too.
+- **Letterhead follows the customer's exporter company** (already the case) —
+  Kazim's samples are plain because their Excel has no letterhead; ours carry it.
+- One shared commercial-invoice layout — a Filtorq-specific one only if their
+  real commercial invoice differs.
+
+**Revisit if:** Filtorq's real commercial invoice differs; a real pallet
+calculation is wanted; the proforma needs Excel too; the packing-list PDF gets
+reworked to the sample (still "M7b").
+
 ## 2026-09-01 — Real stock catalogue import.
 
 Kazim's stock database (`~/Documents/stocks.ods`, ~19,400 rows) replaces the 5

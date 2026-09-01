@@ -80,6 +80,9 @@ Loaded from the company stock database (`stocks.ods` → xlsx) via
 | CustomerId | int | FK → Customer (restrict delete) |
 | SellerCompanyId | int | FK → SellerCompany (restrict delete) — copied from `Customer.SellerCompanyId` at create time, then fixed for the order's life |
 | OrderDate | DateOnly | |
+| InvoiceNumber | string? | commercial-invoice ref, typed at shipment; docs fall back to `OrderNumber` |
+| InvoiceDate | DateOnly? | commercial-invoice date; falls back to `OrderDate` |
+| Pallets | int? | pallet count; when set the docs show "N PALLETS" instead of CBM |
 | Incoterm | string | copied from customer default, editable |
 | Currency | string | copied from customer default, editable |
 | PaymentTerms | string? | pre-filled from `Customer.PaymentType` |

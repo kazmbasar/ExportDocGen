@@ -18,6 +18,18 @@ public class Order
 
     public DateOnly OrderDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
 
+    /// <summary>Commercial-invoice reference, typed at shipment time (the real
+    /// ERP number). The commercial invoice and packing list show it as
+    /// "INVOICE NO", falling back to <see cref="OrderNumber"/>.</summary>
+    public string? InvoiceNumber { get; set; }
+
+    /// <summary>Commercial-invoice date; falls back to <see cref="OrderDate"/>.</summary>
+    public DateOnly? InvoiceDate { get; set; }
+
+    /// <summary>Pallet count for the shipment, typed per order. When set the
+    /// documents show "TOTAL VOLUME : N PALLETS" instead of the CBM.</summary>
+    public int? Pallets { get; set; }
+
     /// <summary>Copied from the customer default, editable per order.</summary>
     public string Incoterm { get; set; } = "";
 
