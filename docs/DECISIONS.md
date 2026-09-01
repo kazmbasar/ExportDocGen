@@ -5,6 +5,35 @@ revisit.
 
 ---
 
+## 2026-09-01 — M7: packing list PDF.
+
+**Decided:**
+- **One shared packing-list layout** for both companies (not two per-company
+  documents like the proforma). `PackingListDocument` swaps in the seller's
+  letterhead — Filtorq's full-page A4 background, İkiler's header band — but the
+  buyer/reference block, the line table and the totals are identical. Split into
+  per-company documents later only if a real issued packing list from each
+  company shows they differ.
+- **A4 portrait, trimmed columns:** `# · PRODUCT CODE · DESCRIPTION · HS CODE ·
+  QTY · CTNS · NET KG · GROSS KG · CBM`. No per-product **Brand** column (not in
+  the model) and no per-line **origin** (origin is `SellerCompany.CountryOfOrigin`,
+  shown once). The DİİB template's commercial-invoice / pallet / GTIP machinery
+  is out of scope.
+- **Total volume is CBM** (m³) + carton count — not a pallet estimate. Pallet
+  counts need pallet-size / stack rules we don't model.
+- **`DocFormat`** static extracted (`Date`, `Weight`, `Count`, `Money`,
+  `BuyerAddress`, `FilterDescription`) — the two proforma documents now call it
+  too, so all three documents format money/dates the same way.
+- **Order number shown as both `PROFORMA NO` and `INVOICE NO`** on the packing
+  list for now — separate proforma / commercial-invoice numbering is a later
+  change.
+- **v1 layout**, to be tightened against a real issued packing list (M7b) — the
+  same loop as M6 → M6b.
+
+**Revisit if:** the two companies' real packing lists differ (→ per-company
+documents); Kazim wants pallet counts, a Brand column, or per-line origin;
+commercial invoice comes into scope.
+
 ## 2026-09-01 — M6.5: multi-seller rebuild.
 
 The group exports through **two companies** — Filtorq and İkiler Otomotiv — each

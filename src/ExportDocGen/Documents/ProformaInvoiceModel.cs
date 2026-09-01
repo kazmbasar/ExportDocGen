@@ -71,7 +71,7 @@ public sealed record ProformaInvoiceModel
                 : line.Quantity * line.UnitPrice;
             lines.Add(new ProformaLine(
                 line.Product!.PartNumber,
-                Describe(line.Product!),
+                DocFormat.FilterDescription(line.Product!),
                 line.Quantity,
                 line.UnitPrice,
                 amount));
@@ -89,7 +89,7 @@ public sealed record ProformaInvoiceModel
 
             BuyerName = customer?.Name ?? "",
             BuyerTaxId = customer?.TaxId,
-            BuyerAddress = BuildBuyerAddress(customer),
+            BuyerAddress = DocFormat.BuyerAddress(customer),
             BuyerPhone = customer?.ContactPhone,
             BuyerEmail = customer?.ContactEmail,
 
@@ -113,28 +113,6 @@ public sealed record ProformaInvoiceModel
         };
     }
 
-    /// <summary>Line description as the templates show it — the filter category
-    /// ("AIR FILTER"), falling back to the catalog description.</summary>
-    private static string Describe(Product product) =>
-        string.IsNullOrWhiteSpace(product.FilterType)
-            ? product.Description
-            : $"{product.FilterType.Trim().ToUpperInvariant()} FILTER";
-
-    private static string BuildBuyerAddress(Customer? customer)
-    {
-        if (customer is null) return "";
-
-        var parts = new List<string>();
-        if (!string.IsNullOrWhiteSpace(customer.AddressLine1)) parts.Add(customer.AddressLine1.Trim());
-        if (!string.IsNullOrWhiteSpace(customer.AddressLine2)) parts.Add(customer.AddressLine2!.Trim());
-
-        var cityLine = string.Join(" ", new[] { customer.PostalCode, customer.City }
-            .Where(s => !string.IsNullOrWhiteSpace(s)));
-        if (cityLine.Length > 0) parts.Add(cityLine);
-
-        if (!string.IsNullOrWhiteSpace(customer.Country)) parts.Add(customer.Country.Trim());
-        return string.Join(", ", parts);
-    }
 }
 
 /// <summary>One line on the proforma invoice — code, filter description,

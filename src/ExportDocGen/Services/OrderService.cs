@@ -14,12 +14,13 @@ public class OrderService(
         await using var db = await dbFactory.CreateDbContextAsync();
         return await db.Orders
             .AsNoTracking()
-            .OrderByDescending(o => o.OrderNumber)
+            .OrderByDescending(o => o.CreatedUtc)
             .Select(o => new OrderListItem(
                 o.Id,
                 o.OrderNumber,
                 o.OrderDate,
                 o.Customer!.Name,
+                o.SellerCompany!.ShortName,
                 o.Currency,
                 o.Lines.Sum(l => l.Quantity * l.UnitPrice),
                 o.Lines.Count))
@@ -140,6 +141,7 @@ public record OrderListItem(
     string OrderNumber,
     DateOnly OrderDate,
     string CustomerName,
+    string SellerShortName,
     string Currency,
     decimal Subtotal,
     int LineCount);

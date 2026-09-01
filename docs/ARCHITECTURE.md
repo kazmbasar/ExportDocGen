@@ -43,13 +43,15 @@ src/ExportDocGen/
 │   ├── OrderNumberGenerator.cs   # ✅ M6.5 — per-company sequence, format per SellerNumberFormat
 │   ├── CalculationService.cs     # ✅ M4 — pure; line + order money/weight/carton/CBM
 │   ├── ExcelOrderImportParser.cs # ✅ M5 — pure; reads a customer .xlsx into line rows
-│   └── OrderDocumentService.cs   # ✅ M6 — loads order + calc + seller → picks template → PDF bytes
+│   └── OrderDocumentService.cs   # ✅ M6 — loads order + calc + seller → picks template → proforma / packing list bytes
 ├── Documents/                    # QuestPDF IDocument classes
+│   ├── DocFormat.cs              # ✅ M7 — shared date / weight / money / address / description formatting
 │   ├── ProformaInvoiceModel.cs   # ✅ M6 — flat print model + From(order, calc, seller)
-│   ├── ProformaInvoiceDocument.cs# ✅ M6 — Filtorq template (FiltorqClassic)
-│   ├── IkilerProformaDocument.cs # ✅ M6.5 — İkiler template (IkilerGrid)
+│   ├── ProformaInvoiceDocument.cs# ✅ M6 — Filtorq proforma (FiltorqClassic)
+│   ├── IkilerProformaDocument.cs # ✅ M6.5 — İkiler proforma (IkilerGrid)
 │   ├── MoneyWords.cs             # ✅ M6.5 — grand total spelled out (Humanizer.Core)
-│   └── PackingListDocument.cs    # (M7)
+│   ├── PackingListModel.cs       # ✅ M7 — flat print model + From(order, calc, seller)
+│   └── PackingListDocument.cs    # ✅ M7 — one shared A4-portrait layout, letterhead per seller
 ├── wwwroot/
 │   ├── proforma-letterhead.png   # ✅ M6 — Filtorq full-page A4 letterhead (PDF background)
 │   └── ikiler-letterhead.png     # ✅ M6.5 — İkiler header band (drawn at page top)
@@ -164,11 +166,32 @@ spreadsheet layout and scope boundaries.
     `Humanizer.Core`), `INCOTERMS / DELIVERY TIME / VALIDITY / PAYMENT TERM`,
     verbatim bank block. Money `$11.904,00`.
   - Dates `dd.MM.yyyy` in both.
-- **`Services/OrderDocumentService.cs`** — the only DB/IO piece: loads the order
-  (incl. `SellerCompany`), runs `CalculationService`, reads the seller's
-  letterhead bytes (resolved against `IHostEnvironment.ContentRootPath`),
-  **selects the document class by `SellerCompany.ProformaTemplate`**, renders,
-  returns `GeneratedDocument(bytes, fileName)`.
-- **Endpoint:** `GET /orders/{id}/proforma.pdf` in `Program.cs`.
-- Both templates omit HS code and weight/carton/CBM figures — neither real
-  template has them. Those stay in `CalculationService` for the M7 packing list.
+- **`Services/OrderDocumentService.cs`** — the only DB/IO piece: `PrepareAsync`
+  loads the order (incl. `SellerCompany`), runs `CalculationService` and reads
+  the seller's letterhead bytes (resolved against
+  `IHostEnvironment.ContentRootPath`); `BuildProformaAsync` /
+  `BuildPackingListAsync` then build the model, **pick the document class by
+  `SellerCompany.ProformaTemplate`**, and return `GeneratedDocument(bytes,
+  fileName)`.
+- **Endpoints:** `GET /orders/{id}/proforma.pdf` and
+  `GET /orders/{id}/packing-list.pdf` in `Program.cs` (shared `StreamDocument`
+  helper — try/catch → `Problem`, 404, inline disposition).
+- The proforma templates omit HS code and weight/carton/CBM figures — neither
+  real template has them.
+
+## Packing list (M7) — v1
+
+- **`Documents/PackingListModel.cs`** — `From(order, calculation, seller,
+  letterhead?)`, mirrors `ProformaInvoiceModel`. Lines
+  (`PackingLine`) and totals come straight from the `CalculationService`
+  `OrderCalculation` (net weight, ship gross weight, cartons, CBM).
+- **`Documents/PackingListDocument.cs`** — **one** shared A4-portrait layout for
+  both companies; the seller's letterhead is swapped in (Filtorq full-page
+  background + wide margins; İkiler header-band image + text footer; else a text
+  header). Centered "PACKING LIST", a buyer / reference block
+  (`PROFORMA NO/DATE`, `INVOICE NO/DATE` — both the order number/date for now,
+  `INCOTERMS`, country of origin), the bordered line table
+  (`# · code · description · HS code · qty · ctns · net kg · gross kg · CBM`) and
+  the shipment totals.
+- **v1** — to be tightened against a real issued packing list (M7b). See
+  `docs/DECISIONS.md` (2026-09-01, M7).

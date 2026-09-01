@@ -63,24 +63,31 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 // Generated documents (opened in a new browser tab from the order screens).
-app.MapGet("/orders/{id:int}/proforma.pdf", async (int id, OrderDocumentService documents, HttpContext http) =>
+app.MapGet("/orders/{id:int}/proforma.pdf", (int id, OrderDocumentService documents, HttpContext http) =>
+    StreamDocument(http, "proforma invoice", () => documents.BuildProformaAsync(id)));
+
+app.MapGet("/orders/{id:int}/packing-list.pdf", (int id, OrderDocumentService documents, HttpContext http) =>
+    StreamDocument(http, "packing list", () => documents.BuildPackingListAsync(id)));
+
+static async Task<IResult> StreamDocument(
+    HttpContext http, string label, Func<Task<GeneratedDocument?>> build)
 {
     GeneratedDocument? pdf;
     try
     {
-        pdf = await documents.BuildProformaAsync(id);
+        pdf = await build();
     }
     catch (Exception ex)
     {
-        return Results.Problem($"Could not generate the proforma invoice: {ex.Message}");
+        return Results.Problem($"Could not generate the {label}: {ex.Message}");
     }
 
     if (pdf is null)
         return Results.NotFound();
 
-    // inline (not attachment) so the "Proforma PDF" links preview in a new tab
+    // inline (not attachment) so the PDF links preview in a new tab
     http.Response.Headers.ContentDisposition = $"inline; filename=\"{pdf.FileName}\"";
     return Results.Bytes(pdf.Bytes, GeneratedDocument.PdfContentType);
-});
+}
 
 app.Run();

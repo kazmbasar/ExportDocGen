@@ -1,4 +1,3 @@
-using System.Globalization;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -12,15 +11,8 @@ namespace ExportDocGen.Documents;
 /// Pure layout — no database or configuration access.</summary>
 public sealed class IkilerProformaDocument(ProformaInvoiceModel model) : IDocument
 {
-    private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
-
-    // "$11.904,00" — currency symbol, dot thousands, comma decimals.
-    private static readonly NumberFormatInfo Money = new()
-    {
-        NumberDecimalSeparator = ",",
-        NumberGroupSeparator = ".",
-        NumberDecimalDigits = 2,
-    };
+    // "$11.904,00" — dot thousands.
+    private const string Group = ".";
 
     private static readonly Color Ink = Color.FromHex("#1A1A1A");
     private static readonly Color Grid = Color.FromHex("#2E7D32");
@@ -91,7 +83,7 @@ public sealed class IkilerProformaDocument(ProformaInvoiceModel model) : IDocume
             c.RelativeColumn(3f);
         });
 
-        Row("Name:", model.BuyerName, "Date:", model.InvoiceDate.ToString("dd.MM.yyyy", Inv));
+        Row("Name:", model.BuyerName, "Date:", DocFormat.Date(model.InvoiceDate));
         Row("P/I NO:", model.InvoiceNumber, "Tel :", model.BuyerPhone ?? "");
         Row("Address:", model.BuyerAddress, "E-Mail:", model.BuyerEmail ?? "");
 
@@ -136,17 +128,17 @@ public sealed class IkilerProformaDocument(ProformaInvoiceModel model) : IDocume
         {
             Cell(line.Code, Align.Left);
             Cell(line.Description, Align.Left);
-            Cell(FormatMoney(line.UnitPrice), Align.Right);
-            Cell(line.Quantity.ToString("N0", Inv), Align.Right);
-            Cell(FormatMoney(line.Amount), Align.Right);
+            Cell(DocFormat.Money(line.UnitPrice, model.Currency, Group), Align.Right);
+            Cell(DocFormat.Count(line.Quantity), Align.Right);
+            Cell(DocFormat.Money(line.Amount, model.Currency, Group), Align.Right);
         }
 
         // Inline totals row — sum of quantity and sum of total, like the sample.
         Cell("", Align.Left);
         Cell("", Align.Left);
         Cell("", Align.Right);
-        Cell(model.TotalQuantity.ToString("N0", Inv), Align.Right, bold: true);
-        Cell(FormatMoney(model.TotalAmount), Align.Right, bold: true);
+        Cell(DocFormat.Count(model.TotalQuantity), Align.Right, bold: true);
+        Cell(DocFormat.Money(model.TotalAmount, model.Currency, Group), Align.Right, bold: true);
 
         void Head(TableCellDescriptor cells, string text) =>
             cells.Cell().Background(HeadFill).Border(0.9f).BorderColor(Grid)
@@ -221,19 +213,6 @@ public sealed class IkilerProformaDocument(ProformaInvoiceModel model) : IDocume
             });
         });
     });
-
-    private string FormatMoney(decimal value)
-    {
-        var n = value.ToString("N2", Money);
-        return model.Currency.ToUpperInvariant() switch
-        {
-            "USD" => $"${n}",
-            "EUR" => $"€{n}",
-            "GBP" => $"£{n}",
-            "TRY" => $"₺{n}",
-            var code => $"{n} {code}",
-        };
-    }
 
     private enum Align { Left, Center, Right }
 }

@@ -25,6 +25,10 @@ else
                        Href="@($"/orders/{Id}/proforma.pdf")" Target="_blank">
                 Proforma PDF
             </MudButton>
+            <MudButton StartIcon="@Icons.Material.Filled.Inventory2"
+                       Href="@($"/orders/{Id}/packing-list.pdf")" Target="_blank">
+                Packing list PDF
+            </MudButton>
         }
         <MudButton OnClick="Cancel">Cancel</MudButton>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save" Disabled="_saving">

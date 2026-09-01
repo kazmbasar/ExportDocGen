@@ -111,12 +111,26 @@ output.
         seller default, printed verbatim. Plus optional `Order.DeliveryTime` /
         `Order.Validity`. Replaces the structured `CompanyProfile.Bank`.
       - 33 tests. See `docs/DECISIONS.md` (2026-09-01).
-- [ ] **M7 — Packing list PDF + order list.** Packing list PDF (weights, cartons,
-      dimensions, volume). Order list/search screen. Regenerate PDFs from a
-      saved order.
+- [x] **M7 — Packing list PDF + order list polish.** _(2026-09-01)_
+      - **Packing list PDF** — `GET /orders/{id}/packing-list.pdf`.
+        `PackingListModel` + `PackingListDocument` (one shared A4-portrait layout;
+        each company's letterhead swapped in) + `OrderDocumentService`
+        `.BuildPackingListAsync`. Columns: `# · code · description · HS code ·
+        qty · cartons · net kg · gross kg · CBM`, then the shipment totals
+        (quantity, cartons, net & gross weight, CBM). All figures from
+        `CalculationService` (M4). Formatting shared via a new `DocFormat`
+        helper (also now used by the two proforma documents).
+      - **Order list** (`/orders`) — Exporter column + company filter; quick
+        filter also matches the exporter; per-row "Packing list PDF" button
+        (also on the order editor). Newest-first ordering (`CreatedUtc`).
+      - v1 layout — to be tightened against a real issued packing list (M7b),
+        the same loop as M6 → M6b. 36 tests.
+- [ ] **M7b — Match the packing list to a real issued document.** Kazim to
+      supply one; refine `PackingListDocument` (per-company split only if their
+      real layouts differ).
 
-After M7: use it for a real order, then pick up stretch goals or start the
-cross-reference project.
+After M7b: use it for a real order end to end, then pick up stretch goals or
+start the cross-reference project.
 
 ## Excel order import (M5) — as built
 

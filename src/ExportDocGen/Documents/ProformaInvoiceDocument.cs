@@ -1,4 +1,3 @@
-using System.Globalization;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -6,22 +5,14 @@ using QuestPDF.Infrastructure;
 namespace ExportDocGen.Documents;
 
 /// <summary>Renders a <see cref="ProformaInvoiceModel"/> as an A4 proforma
-/// invoice laid out like the company's own template: a full-page letterhead
+/// invoice laid out like Filtorq's own template: a full-page letterhead
 /// background, the buyer / invoice box, delivery &amp; payment terms, the bank
 /// block, then a page break and the line-items table with a highlighted grand
 /// total. Pure layout — no database or configuration access.</summary>
 public sealed class ProformaInvoiceDocument(ProformaInvoiceModel model) : IDocument
 {
-    private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
-
-    // "$3 624,88" — currency symbol, non-breaking-space groups, comma decimals,
-    // matching the company's existing documents.
-    private static readonly NumberFormatInfo Money = new()
-    {
-        NumberDecimalSeparator = ",",
-        NumberGroupSeparator = " ",
-        NumberDecimalDigits = 2,
-    };
+    // "$3 624,88" — space thousands.
+    private const string Group = " ";
 
     private static readonly Color Ink = Color.FromHex("#1A1A1A");
     private static readonly Color Rule = Color.FromHex("#8A8A8A");
@@ -94,7 +85,7 @@ public sealed class ProformaInvoiceDocument(ProformaInvoiceModel model) : IDocum
         });
 
         var taxSuffix = string.IsNullOrWhiteSpace(model.BuyerTaxId) ? "" : $" - {model.BuyerTaxId}";
-        Row("Name:", model.BuyerName + taxSuffix, "Date:", model.InvoiceDate.ToString("dd.MM.yyyy", Inv));
+        Row("Name:", model.BuyerName + taxSuffix, "Date:", DocFormat.Date(model.InvoiceDate));
         Row("P/I NO:", model.InvoiceNumber, "Tel :", model.BuyerPhone ?? "");
         Row("Email:", model.BuyerEmail ?? "", "Fax :", model.BuyerFax ?? "");
         Row("Address:", model.BuyerAddress, "", "");
@@ -165,9 +156,9 @@ public sealed class ProformaInvoiceDocument(ProformaInvoiceModel model) : IDocum
         foreach (var line in model.Lines)
         {
             Body(line.Code);
-            Body(line.Quantity.ToString("N0", Inv));
-            Body(FormatMoney(line.UnitPrice));
-            Body(FormatMoney(line.Amount));
+            Body(DocFormat.Count(line.Quantity));
+            Body(DocFormat.Money(line.UnitPrice, model.Currency, Group));
+            Body(DocFormat.Money(line.Amount, model.Currency, Group));
         }
 
         // A blank spacer row, then the grand total in a gold box spanning the
@@ -177,7 +168,7 @@ public sealed class ProformaInvoiceDocument(ProformaInvoiceModel model) : IDocum
         table.Cell().ColumnSpan(2);
         table.Cell().ColumnSpan(2).Background(Gold).Border(1).BorderColor(Ink)
             .PaddingVertical(5).AlignCenter()
-            .Text(FormatMoney(model.TotalAmount)).Bold().FontSize(11).FontColor(Ink);
+            .Text(DocFormat.Money(model.TotalAmount, model.Currency, Group)).Bold().FontSize(11).FontColor(Ink);
 
         void Head(TableCellDescriptor cells, string text) =>
             cells.Cell().Border(0.75f).BorderColor(Rule).PaddingVertical(5)
@@ -200,17 +191,4 @@ public sealed class ProformaInvoiceDocument(ProformaInvoiceModel model) : IDocum
         col.Item().PaddingTop(3).AlignCenter()
             .Text($"Country of origin: {model.CountryOfOrigin}").FontSize(8).FontColor(Rule);
     });
-
-    private string FormatMoney(decimal value)
-    {
-        var n = value.ToString("N2", Money);
-        return model.Currency.ToUpperInvariant() switch
-        {
-            "USD" => $"${n}",
-            "EUR" => $"€{n}",
-            "GBP" => $"£{n}",
-            "TRY" => $"₺{n}",
-            var code => $"{n} {code}",
-        };
-    }
 }

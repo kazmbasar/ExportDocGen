@@ -19,17 +19,26 @@
     </MudButton>
 </MudStack>
 
-<MudDataGrid T="OrderListItem" Items="_orders" Loading="_loading" Dense="true" Hover="true"
+<MudDataGrid T="OrderListItem" Items="_filtered" Loading="_loading" Dense="true" Hover="true"
              QuickFilter="_quickFilter" SortMode="SortMode.Multiple">
     <ToolBarContent>
         <MudTextField @bind-Value="_search" Placeholder="Search" Immediate="true"
                       Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
                       IconSize="Size.Medium" Class="mt-0" Clearable="true" />
+        <MudSpacer />
+        <MudSelect T="string" @bind-Value="_exporterFilter" Label="Exporter" Dense="true"
+                   Clearable="true" Style="max-width:180px">
+            @foreach (var name in _exporters)
+            {
+                <MudSelectItem T="string" Value="@name">@name</MudSelectItem>
+            }
+        </MudSelect>
     </ToolBarContent>
     <Columns>
         <PropertyColumn Property="o => o.OrderNumber" Title="Order no." />
         <PropertyColumn Property="o => o.OrderDate" Title="Date" Format="yyyy-MM-dd" />
         <PropertyColumn Property="o => o.CustomerName" Title="Customer" />
+        <PropertyColumn Property="o => o.SellerShortName" Title="Exporter" />
         <PropertyColumn Property="o => o.LineCount" Title="Lines" />
         <TemplateColumn Title="Subtotal" Sortable="false">
             <CellTemplate>@context.Item.Subtotal.ToString("N2") @context.Item.Currency</CellTemplate>
@@ -39,6 +48,10 @@
                 <MudTooltip Text="Proforma invoice PDF">
                     <MudIconButton Icon="@Icons.Material.Filled.PictureAsPdf" Size="Size.Small"
                                    Href="@($"/orders/{context.Item.Id}/proforma.pdf")" Target="_blank" />
+                </MudTooltip>
+                <MudTooltip Text="Packing list PDF">
+                    <MudIconButton Icon="@Icons.Material.Filled.Inventory2" Size="Size.Small"
+                                   Href="@($"/orders/{context.Item.Id}/packing-list.pdf")" Target="_blank" />
                 </MudTooltip>
                 <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
                                Href="@($"/orders/{context.Item.Id}")" />
@@ -56,13 +69,23 @@
     private List<OrderListItem> _orders = [];
     private bool _loading = true;
     private string _search = "";
+    private string? _exporterFilter;
+
+    private IEnumerable<string> _exporters =>
+        _orders.Select(o => o.SellerShortName).Distinct().OrderBy(n => n);
+
+    private IEnumerable<OrderListItem> _filtered =>
+        string.IsNullOrWhiteSpace(_exporterFilter)
+            ? _orders
+            : _orders.Where(o => o.SellerShortName == _exporterFilter);
 
     private Func<OrderListItem, bool> _quickFilter => o =>
     {
         if (string.IsNullOrWhiteSpace(_search)) return true;
         var s = _search.Trim();
         return o.OrderNumber.Contains(s, StringComparison.OrdinalIgnoreCase)
-            || o.CustomerName.Contains(s, StringComparison.OrdinalIgnoreCase);
+            || o.CustomerName.Contains(s, StringComparison.OrdinalIgnoreCase)
+            || o.SellerShortName.Contains(s, StringComparison.OrdinalIgnoreCase);
     };
 
     protected override async Task OnInitializedAsync() => await Load();
