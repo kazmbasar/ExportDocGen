@@ -1,11 +1,9 @@
 using System.Text;
-using ExportDocGen.Data;
 using ExportDocGen.Data.Entities;
 using ExportDocGen.Documents;
 using ExportDocGen.Services;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
 using QuestPDF.Fluent;
 
 namespace ExportDocGen.Tests;
@@ -56,16 +54,17 @@ public class ProformaInvoiceTests
         };
     }
 
-    private static CompanyProfile Company() => new()
+    private static SellerCompany Seller() => new()
     {
         Name = "Filtorq Filtre A.Ş.",
-        Bank = new BankDetails
-        {
-            BeneficiaryName = "Filtorq Filtre A.Ş.",
-            BankName = "Ziraat Bankası",
-            Swift = "TCZBTR2AXXX",
-            Iban = "TR62 0001 0020 6383 4792 2750 06",
-        },
+        ShortName = "Filtorq",
+        ProformaTemplate = ProformaTemplate.FiltorqClassic,
+        NumberFormat = SellerNumberFormat.ExpYearSeq,
+        DefaultBankDetails = string.Join('\n',
+            "Company Name : Filtorq Filtre A.Ş.",
+            "Our Bank : Ziraat Bankası",
+            "Swift Code : TCZBTR2AXXX",
+            "IBAN NO : TR62 0001 0020 6383 4792 2750 06"),
     };
 
     private static OrderCalculation Calculate(Order order) =>
@@ -78,7 +77,7 @@ public class ProformaInvoiceTests
     {
         var order = SampleOrder();
 
-        var model = ProformaInvoiceModel.From(order, Calculate(order), Company());
+        var model = ProformaInvoiceModel.From(order, Calculate(order), Seller());
 
         Assert.Equal("EXP-2026-0007", model.InvoiceNumber);
         Assert.Equal("LTD LEOMOTORS", model.BuyerName);
@@ -89,7 +88,20 @@ public class ProformaInvoiceTests
         Assert.Equal(2, model.Lines.Count);
         Assert.Equal("AF-1", model.Lines[0].Code);
         Assert.Equal(100 * 7.4m + 250 * 2.1m, model.TotalAmount);
-        Assert.Equal("TCZBTR2AXXX", model.Bank.Swift);
+        Assert.Equal(350, model.TotalQuantity);
+        Assert.Contains("TCZBTR2AXXX", model.BankDetailsText);
+        Assert.Contains("UNITED STATES DOLLARS ONLY", model.AmountInWords);
+    }
+
+    [Fact]
+    public void Order_bank_text_overrides_the_seller_default()
+    {
+        var order = SampleOrder();
+        order.BankDetails = "PAY HERE : TR99";
+
+        var model = ProformaInvoiceModel.From(order, Calculate(order), Seller());
+
+        Assert.Equal("PAY HERE : TR99", model.BankDetailsText);
     }
 
     [Fact]
@@ -99,12 +111,12 @@ public class ProformaInvoiceTests
         var calc = Calculate(order);
 
         var plain = new ProformaInvoiceDocument(
-            ProformaInvoiceModel.From(order, calc, Company())).GeneratePdf();
+            ProformaInvoiceModel.From(order, calc, Seller())).GeneratePdf();
         Assert.True(plain.Length > 1000);
         Assert.Equal("%PDF-", Encoding.ASCII.GetString(plain, 0, 5));
 
         var withLetterhead = new ProformaInvoiceDocument(
-            ProformaInvoiceModel.From(order, calc, Company(), letterhead: FakePng())).GeneratePdf();
+            ProformaInvoiceModel.From(order, calc, Seller(), letterhead: FakePng())).GeneratePdf();
         Assert.Equal("%PDF-", Encoding.ASCII.GetString(withLetterhead, 0, 5));
     }
 
@@ -142,8 +154,7 @@ public class ProformaInvoiceTests
         });
 
         var service = new OrderDocumentService(
-            orders, new CalculationService(), Options.Create(new CompanyProfile()),
-            new TestHostEnvironment());
+            orders, new CalculationService(), new TestHostEnvironment());
 
         var doc = await service.BuildProformaAsync(id);
 

@@ -31,10 +31,7 @@ public sealed class ProformaInvoiceDocument(ProformaInvoiceModel model) : IDocum
 
     private bool HasLetterhead => model.Letterhead is { Length: > 0 };
 
-    private bool HasBank =>
-        !string.IsNullOrWhiteSpace(model.Bank.Iban)
-        || !string.IsNullOrWhiteSpace(model.Bank.Swift)
-        || !string.IsNullOrWhiteSpace(model.Bank.BankName);
+    private bool HasBankText => !string.IsNullOrWhiteSpace(model.BankDetailsText);
 
     public DocumentMetadata GetMetadata() => new()
     {
@@ -72,7 +69,7 @@ public sealed class ProformaInvoiceDocument(ProformaInvoiceModel model) : IDocum
         col.Item().Element(BuyerBox);
         col.Item().PaddingTop(20).Element(TermsBlock);
 
-        if (HasBank)
+        if (HasBankText)
             col.Item().PaddingTop(20).Element(BankBlock);
 
         col.Item().PageBreak();
@@ -142,22 +139,9 @@ public sealed class ProformaInvoiceDocument(ProformaInvoiceModel model) : IDocum
         col.Item().AlignCenter().PaddingBottom(2)
             .Text($"Bank Detail ({model.Currency}):").FontSize(11).Bold();
 
-        Line("Company Name", string.IsNullOrWhiteSpace(model.Bank.BeneficiaryName)
-            ? model.SellerName
-            : model.Bank.BeneficiaryName);
-        Line("Our Bank", model.Bank.BankName);
-        Line("Swift Code", model.Bank.Swift);
-        Line("IBAN NO", model.Bank.Iban);
-
-        void Line(string label, string value)
-        {
-            if (string.IsNullOrWhiteSpace(value)) return;
-            col.Item().Text(t =>
-            {
-                t.Span($"{label} : ").SemiBold();
-                t.Span(value).SemiBold();
-            });
-        }
+        // The order carries the whole bank block as free text — print it verbatim.
+        foreach (var line in model.BankDetailsText!.ReplaceLineEndings("\n").Split('\n'))
+            col.Item().Text(line).SemiBold();
     });
 
     private void LineItems(IContainer container) => container.Table(table =>
@@ -206,20 +190,15 @@ public sealed class ProformaInvoiceDocument(ProformaInvoiceModel model) : IDocum
 
     private void FallbackHeader(IContainer container) => container.Column(col =>
     {
-        if (model.Logo is { Length: > 0 } logo)
-            col.Item().Height(40).AlignLeft().Image(logo).FitHeight();
-
         col.Item().Text(model.SellerName).FontSize(13).Bold();
-        foreach (var l in model.SellerAddress)
-            col.Item().Text(l).FontSize(9);
         col.Item().PaddingTop(6).LineHorizontal(1).LineColor(Rule);
     });
 
     private void FallbackFooter(IContainer container) => container.Column(col =>
     {
         col.Item().LineHorizontal(1).LineColor(Rule);
-        if (model.SellerContactLine is { } line)
-            col.Item().PaddingTop(3).AlignCenter().Text(line).FontSize(8).FontColor(Rule);
+        col.Item().PaddingTop(3).AlignCenter()
+            .Text($"Country of origin: {model.CountryOfOrigin}").FontSize(8).FontColor(Rule);
     });
 
     private string FormatMoney(decimal value)

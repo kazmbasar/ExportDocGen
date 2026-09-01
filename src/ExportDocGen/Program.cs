@@ -13,10 +13,6 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddMudServices();
 
-// Company header details for generated documents.
-builder.Services.Configure<CompanyProfile>(
-    builder.Configuration.GetSection(CompanyProfile.SectionName));
-
 // SQLite database, stored in the OS local-app-data folder (outside the source tree).
 var dataDir = Path.Combine(
     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),

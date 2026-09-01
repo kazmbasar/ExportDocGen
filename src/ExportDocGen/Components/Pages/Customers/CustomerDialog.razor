@@ -30,11 +30,20 @@
                     <MudTextField @bind-Value="Model.Country" Label="Country" Required="true"
                                   RequiredError="Country is required" />
                 </MudItem>
-                <MudItem xs="6">
+                <MudItem xs="6" sm="4">
                     <MudTextField @bind-Value="Model.DefaultIncoterm" Label="Default incoterm"
                                   HelperText="e.g. FOB Istanbul" />
                 </MudItem>
-                <MudItem xs="6">
+                <MudItem xs="6" sm="4">
+                    <MudSelect T="PaymentTerm?" @bind-Value="Model.PaymentType" Label="Default payment type"
+                               Clearable="true" HelperText="Shown on the proforma">
+                        @foreach (var term in PaymentTermText.All)
+                        {
+                            <MudSelectItem T="PaymentTerm?" Value="term">@PaymentTermText.Of(term)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="4">
                     <MudTextField @bind-Value="Model.DefaultCurrency" Label="Default currency" Required="true"
                                   RequiredError="Currency is required"
                                   Validation="@(new Func<string, string?>(ValidateCurrency))"

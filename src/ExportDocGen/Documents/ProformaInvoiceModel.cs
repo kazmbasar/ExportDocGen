@@ -1,26 +1,22 @@
-using ExportDocGen.Data;
 using ExportDocGen.Data.Entities;
 using ExportDocGen.Services;
 
 namespace ExportDocGen.Documents;
 
-/// <summary>Flat, self-contained data for one proforma invoice — everything the
-/// <see cref="ProformaInvoiceDocument"/> needs, with no database or config
-/// lookups left to do. Build it with <see cref="From"/>.</summary>
+/// <summary>Flat, self-contained data for one proforma invoice — everything a
+/// proforma document needs, with no database or configuration lookups left to
+/// do. Build it with <see cref="From"/>.</summary>
 public sealed record ProformaInvoiceModel
 {
-    // Seller — used for the bank block and (when there is no letterhead) the
-    // fallback text header/footer.
+    // Seller
     public required string SellerName { get; init; }
-    public IReadOnlyList<string> SellerAddress { get; init; } = [];
-    public string? SellerContactLine { get; init; }
+    public required string SellerShortName { get; init; }
+    public required ProformaTemplate Template { get; init; }
+    public string CountryOfOrigin { get; init; } = "Türkiye";
 
     /// <summary>Full-page A4 background (company letterhead). When present the
-    /// document draws no header/footer of its own.</summary>
+    /// Filtorq template draws no header/footer of its own.</summary>
     public byte[]? Letterhead { get; init; }
-
-    /// <summary>Standalone logo bytes for the fallback header only.</summary>
-    public byte[]? Logo { get; init; }
 
     // Buyer
     public required string BuyerName { get; init; }
@@ -36,23 +32,30 @@ public sealed record ProformaInvoiceModel
     public required string Incoterm { get; init; }
     public required string Currency { get; init; }
     public string? PaymentTerms { get; init; }
+    public string? DeliveryTime { get; init; }
+    public string? Validity { get; init; }
     public string? Notes { get; init; }
 
     public required IReadOnlyList<ProformaLine> Lines { get; init; }
     public required decimal TotalAmount { get; init; }
+    public required int TotalQuantity { get; init; }
 
-    public BankDetails Bank { get; init; } = new();
+    /// <summary>Grand total spelled out, e.g. "ELEVEN THOUSAND … DOLLARS ONLY".</summary>
+    public required string AmountInWords { get; init; }
 
-    /// <summary>Combines a saved order, its computed totals and the company
-    /// profile into a print-ready model. <paramref name="calculation"/> lines
-    /// must correspond to <paramref name="order"/>.Lines with a product,
+    /// <summary>Bank block, printed verbatim (line breaks preserved). Comes from
+    /// the order, falling back to the seller company's default text.</summary>
+    public string? BankDetailsText { get; init; }
+
+    /// <summary>Combines a saved order, its computed totals and the issuing
+    /// seller company into a print-ready model. <paramref name="calculation"/>
+    /// lines must correspond to <paramref name="order"/>.Lines with a product,
     /// ordered by <see cref="OrderLine.LineNumber"/>.</summary>
     public static ProformaInvoiceModel From(
         Order order,
         OrderCalculation calculation,
-        CompanyProfile company,
-        byte[]? letterhead = null,
-        byte[]? logo = null)
+        SellerCompany seller,
+        byte[]? letterhead = null)
     {
         var orderLines = order.Lines
             .Where(l => l.Product is not null)
@@ -66,18 +69,23 @@ public sealed record ProformaInvoiceModel
             var amount = i < calculation.Lines.Count
                 ? calculation.Lines[i].LineTotal
                 : line.Quantity * line.UnitPrice;
-            lines.Add(new ProformaLine(line.Product!.PartNumber, line.Quantity, line.UnitPrice, amount));
+            lines.Add(new ProformaLine(
+                line.Product!.PartNumber,
+                Describe(line.Product!),
+                line.Quantity,
+                line.UnitPrice,
+                amount));
         }
 
         var customer = order.Customer;
 
         return new ProformaInvoiceModel
         {
-            SellerName = company.Name,
-            SellerAddress = company.AddressLines ?? [],
-            SellerContactLine = BuildContactLine(company),
+            SellerName = seller.Name,
+            SellerShortName = seller.ShortName,
+            Template = seller.ProformaTemplate,
+            CountryOfOrigin = seller.CountryOfOrigin,
             Letterhead = letterhead,
-            Logo = logo,
 
             BuyerName = customer?.Name ?? "",
             BuyerTaxId = customer?.TaxId,
@@ -90,14 +98,27 @@ public sealed record ProformaInvoiceModel
             Incoterm = string.IsNullOrWhiteSpace(order.Incoterm) ? "-" : order.Incoterm,
             Currency = order.Currency,
             PaymentTerms = order.PaymentTerms,
+            DeliveryTime = order.DeliveryTime,
+            Validity = order.Validity,
             Notes = order.Notes,
 
             Lines = lines,
             TotalAmount = calculation.OrderTotal,
+            TotalQuantity = lines.Sum(l => l.Quantity),
+            AmountInWords = MoneyWords.Of(calculation.OrderTotal, order.Currency),
 
-            Bank = company.Bank ?? new BankDetails(),
+            BankDetailsText = string.IsNullOrWhiteSpace(order.BankDetails)
+                ? seller.DefaultBankDetails
+                : order.BankDetails,
         };
     }
+
+    /// <summary>Line description as the templates show it — the filter category
+    /// ("AIR FILTER"), falling back to the catalog description.</summary>
+    private static string Describe(Product product) =>
+        string.IsNullOrWhiteSpace(product.FilterType)
+            ? product.Description
+            : $"{product.FilterType.Trim().ToUpperInvariant()} FILTER";
 
     private static string BuildBuyerAddress(Customer? customer)
     {
@@ -114,18 +135,8 @@ public sealed record ProformaInvoiceModel
         if (!string.IsNullOrWhiteSpace(customer.Country)) parts.Add(customer.Country.Trim());
         return string.Join(", ", parts);
     }
-
-    private static string? BuildContactLine(CompanyProfile company)
-    {
-        var bits = new List<string>();
-        if (!string.IsNullOrWhiteSpace(company.Phone)) bits.Add($"Tel: {company.Phone}");
-        if (!string.IsNullOrWhiteSpace(company.Fax)) bits.Add($"Faks: {company.Fax}");
-        if (!string.IsNullOrWhiteSpace(company.Email)) bits.Add(company.Email);
-        if (!string.IsNullOrWhiteSpace(company.Website)) bits.Add(company.Website);
-        return bits.Count > 0 ? string.Join("   -   ", bits) : null;
-    }
 }
 
-/// <summary>One line on the proforma invoice — matches the columns of the
-/// company's template: code, quantity, unit price, extended total.</summary>
-public sealed record ProformaLine(string Code, int Quantity, decimal UnitPrice, decimal Amount);
+/// <summary>One line on the proforma invoice — code, filter description,
+/// quantity, unit price, extended total. Templates use the columns they need.</summary>
+public sealed record ProformaLine(string Code, string Description, int Quantity, decimal UnitPrice, decimal Amount);

@@ -1,18 +1,17 @@
-using ExportDocGen.Data;
+using ExportDocGen.Data.Entities;
 using ExportDocGen.Documents;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
 using QuestPDF.Fluent;
 
 namespace ExportDocGen.Services;
 
 /// <summary>Turns a saved order into a downloadable PDF document. Loads the
-/// order, runs the shared <see cref="CalculationService"/>, reads the company
-/// profile and letterhead, and renders the document.</summary>
+/// order (with its seller company), runs the shared
+/// <see cref="CalculationService"/>, reads the seller's letterhead, and renders
+/// the proforma with that company's template.</summary>
 public class OrderDocumentService(
     OrderService orders,
     CalculationService calculator,
-    IOptions<CompanyProfile> company,
     IHostEnvironment environment)
 {
     /// <summary>Builds the proforma invoice PDF for an order, or <c>null</c> if
@@ -23,6 +22,9 @@ public class OrderDocumentService(
         if (order is null)
             return null;
 
+        var seller = order.SellerCompany
+            ?? throw new InvalidOperationException($"Order {orderId} has no seller company.");
+
         // Product is a restrict-delete FK, so every persisted line has one.
         // Keep this ordering identical to ProformaInvoiceModel.From.
         var calculation = calculator.CalculateOrder(order.Lines
@@ -30,11 +32,10 @@ public class OrderDocumentService(
             .Where(l => l.Product is not null)
             .Select(l => (l.Quantity, l.UnitPrice, l.Product!)));
 
-        var profile = company.Value;
-        var model = ProformaInvoiceModel.From(order, calculation, profile,
-            letterhead: ReadAsset(profile.LetterheadPath),
-            logo: ReadAsset(profile.LogoPath));
+        var model = ProformaInvoiceModel.From(order, calculation, seller,
+            letterhead: ReadAsset(seller.LetterheadPath));
 
+        // Only the Filtorq template exists so far; IkilerGrid is added in M6.5c.
         var bytes = new ProformaInvoiceDocument(model).GeneratePdf();
         return new GeneratedDocument(bytes, $"{Sanitize(order.OrderNumber)}-proforma.pdf");
     }
