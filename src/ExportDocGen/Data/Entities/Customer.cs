@@ -20,6 +20,10 @@ public class Customer
     /// <summary>e.g. "FOB Istanbul", "CIF Hamburg". Pre-fills new orders.</summary>
     public string? DefaultIncoterm { get; set; }
 
+    /// <summary>Managed payment-terms choice. Pre-fills new orders and appears on
+    /// the proforma as <see cref="PaymentTermText"/>.</summary>
+    public PaymentTerm? PaymentType { get; set; }
+
     /// <summary>ISO 4217 code, e.g. "USD", "EUR". Pre-fills new orders.</summary>
     public string DefaultCurrency { get; set; } = "USD";
 

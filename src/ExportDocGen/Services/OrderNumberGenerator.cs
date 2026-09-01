@@ -1,30 +1,40 @@
 using ExportDocGen.Data;
+using ExportDocGen.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExportDocGen.Services;
 
-/// <summary>Produces the next order number in the form "EXP-{year}-{sequence:0000}".</summary>
+/// <summary>Produces the next order / proforma number for a seller company. Each
+/// company has its own independent sequence, formed per
+/// <see cref="SellerCompany.NumberFormat"/>:
+/// <list type="bullet">
+///   <item><see cref="SellerNumberFormat.ExpYearSeq"/> — "EXP-{year}-{seq:0000}", per year.</item>
+///   <item><see cref="SellerNumberFormat.DateSlashSeq"/> — "{yyMMdd}/{seq}", per day.</item>
+/// </list>
+/// </summary>
 public class OrderNumberGenerator(IDbContextFactory<AppDbContext> dbFactory)
 {
-    public async Task<string> NextAsync(int? year = null)
+    public async Task<string> NextAsync(SellerCompany seller, DateOnly orderDate)
     {
-        year ??= DateTime.Today.Year;
-        var prefix = $"EXP-{year}-";
+        var prefix = seller.NumberFormat switch
+        {
+            SellerNumberFormat.DateSlashSeq => $"{orderDate:yyMMdd}/",
+            _ => $"EXP-{orderDate.Year}-",
+        };
 
         await using var db = await dbFactory.CreateDbContextAsync();
-        var lastForYear = await db.Orders
-            .Where(o => o.OrderNumber.StartsWith(prefix))
-            .OrderByDescending(o => o.OrderNumber)
+        var existing = await db.Orders
+            .Where(o => o.SellerCompanyId == seller.Id && o.OrderNumber.StartsWith(prefix))
             .Select(o => o.OrderNumber)
-            .FirstOrDefaultAsync();
+            .ToListAsync();
 
-        var nextSeq = 1;
-        if (lastForYear is not null &&
-            int.TryParse(lastForYear[prefix.Length..], out var lastSeq))
-        {
-            nextSeq = lastSeq + 1;
-        }
+        var nextSeq = existing
+            .Select(n => int.TryParse(n.AsSpan(prefix.Length), out var s) ? s : 0)
+            .DefaultIfEmpty(0)
+            .Max() + 1;
 
-        return $"{prefix}{nextSeq:0000}";
+        return seller.NumberFormat == SellerNumberFormat.DateSlashSeq
+            ? $"{prefix}{nextSeq}"
+            : $"{prefix}{nextSeq:0000}";
     }
 }

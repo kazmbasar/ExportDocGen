@@ -3,6 +3,7 @@
 @inject OrderService OrderService
 @inject CustomerService CustomerService
 @inject ProductService ProductService
+@inject SellerCompanyService SellerCompanyService
 @inject CalculationService Calc
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
@@ -34,6 +35,16 @@ else
     <MudForm @ref="_form" Model="_order">
         <MudGrid>
             <MudItem xs="12" sm="6" md="4">
+                <MudSelect T="int" Label="Seller company" Value="_order.SellerCompanyId"
+                           ValueChanged="OnSellerChanged" Required="true"
+                           RequiredError="Choose the company issuing this order">
+                    @foreach (var s in _sellers)
+                    {
+                        <MudSelectItem T="int" Value="s.Id">@s.ShortName</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
                 <MudSelect T="int" Label="Customer" Value="_order.CustomerId"
                            ValueChanged="OnCustomerChanged" Required="true"
                            RequiredError="Choose a customer">
@@ -55,7 +66,17 @@ else
             <MudItem xs="12" sm="6" md="4">
                 <MudTextField @bind-Value="_order.PaymentTerms" Label="Payment terms" />
             </MudItem>
-            <MudItem xs="12" sm="6" md="8">
+            <MudItem xs="6" sm="3" md="2">
+                <MudTextField @bind-Value="_order.DeliveryTime" Label="Delivery time" />
+            </MudItem>
+            <MudItem xs="6" sm="3" md="2">
+                <MudTextField @bind-Value="_order.Validity" Label="Validity" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_order.BankDetails" Label="Bank details" Lines="6"
+                              HelperText="Printed verbatim on the proforma" />
+            </MudItem>
+            <MudItem xs="12" md="6">
                 <MudTextField @bind-Value="_order.Notes" Label="Notes" Lines="2" />
             </MudItem>
         </MudGrid>
@@ -164,6 +185,7 @@ else
     private Order _order = new();
     private DateTime? _orderDate = DateTime.Today;
     private List<Customer> _customers = [];
+    private List<SellerCompany> _sellers = [];
     private List<Product> _products = [];
     private Dictionary<int, Product> _productLookup = [];
     private MudForm _form = default!;
@@ -189,6 +211,7 @@ else
     {
         _loading = true;
         _customers = await CustomerService.GetAllAsync();
+        _sellers = await SellerCompanyService.GetAllAsync();
         _products = await ProductService.GetAllAsync(includeInactive: false);
         _productLookup = _products.ToDictionary(p => p.Id);
 
@@ -196,6 +219,8 @@ else
         {
             _order = new Order { Currency = "USD" };
             _orderDate = DateTime.Today;
+            if (_sellers.Count > 0)
+                OnSellerChanged(_sellers[0].Id);
         }
         else
         {
@@ -226,7 +251,23 @@ else
                 _order.Incoterm = customer.DefaultIncoterm ?? "";
             if (IsNew || string.IsNullOrWhiteSpace(_order.Currency))
                 _order.Currency = customer.DefaultCurrency;
+            if (string.IsNullOrWhiteSpace(_order.PaymentTerms))
+                _order.PaymentTerms = PaymentTermText.Of(customer.PaymentType);
         }
+    }
+
+    private void OnSellerChanged(int sellerId)
+    {
+        _order.SellerCompanyId = sellerId;
+        var seller = _sellers.FirstOrDefault(s => s.Id == sellerId);
+        if (seller is null) return;
+
+        if (string.IsNullOrWhiteSpace(_order.BankDetails))
+            _order.BankDetails = seller.DefaultBankDetails;
+        if (string.IsNullOrWhiteSpace(_order.DeliveryTime))
+            _order.DeliveryTime = seller.DefaultDeliveryTime;
+        if (string.IsNullOrWhiteSpace(_order.Validity))
+            _order.Validity = seller.DefaultValidity;
     }
 
     private void AddLine()
@@ -253,6 +294,11 @@ else
         await _form.ValidateAsync();
         if (!_form.IsValid)
             return;
+        if (_order.SellerCompanyId == 0)
+        {
+            Snackbar.Add("Choose a seller company.", Severity.Error);
+            return;
+        }
         if (_order.CustomerId == 0)
         {
             Snackbar.Add("Choose a customer.", Severity.Error);

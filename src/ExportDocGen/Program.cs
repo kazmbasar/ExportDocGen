@@ -29,6 +29,7 @@ builder.Services.AddDbContextFactory<AppDbContext>(options =>
 
 builder.Services.AddScoped<CustomerService>();
 builder.Services.AddScoped<ProductService>();
+builder.Services.AddScoped<SellerCompanyService>();
 builder.Services.AddScoped<OrderNumberGenerator>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<CalculationService>();

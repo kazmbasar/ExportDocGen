@@ -11,6 +11,11 @@ public class Order
     public int CustomerId { get; set; }
     public Customer? Customer { get; set; }
 
+    /// <summary>The group company issuing this order — decides the proforma
+    /// template, letterhead and number format.</summary>
+    public int SellerCompanyId { get; set; }
+    public SellerCompany? SellerCompany { get; set; }
+
     public DateOnly OrderDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
 
     /// <summary>Copied from the customer default, editable per order.</summary>
@@ -19,7 +24,22 @@ public class Order
     /// <summary>ISO 4217 code, copied from the customer default, editable.</summary>
     public string Currency { get; set; } = "USD";
 
+    /// <summary>Payment terms text for the proforma. Pre-filled from the
+    /// customer's <see cref="Customer.PaymentType"/>.</summary>
     public string? PaymentTerms { get; set; }
+
+    /// <summary>Free-text bank block, typed per order and printed verbatim on the
+    /// proforma (line breaks preserved). Pre-filled from the seller company's
+    /// <see cref="SellerCompany.DefaultBankDetails"/>.</summary>
+    public string? BankDetails { get; set; }
+
+    /// <summary>Optional — shown as "DELIVERY TIME" on templates that have that
+    /// row (İkiler). Pre-filled from the seller company default.</summary>
+    public string? DeliveryTime { get; set; }
+
+    /// <summary>Optional — shown as "VALIDITY" on templates that have that row
+    /// (İkiler). Pre-filled from the seller company default.</summary>
+    public string? Validity { get; set; }
 
     /// <summary>Free text shown on the proforma invoice.</summary>
     public string? Notes { get; set; }

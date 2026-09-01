@@ -2,6 +2,7 @@
 @inject ExcelOrderImportParser Parser
 @inject OrderService OrderService
 @inject CustomerService CustomerService
+@inject SellerCompanyService SellerCompanyService
 @inject ProductService ProductService
 @inject CalculationService Calc
 @inject ISnackbar Snackbar
@@ -39,7 +40,16 @@
 else
 {
     <MudGrid>
-        <MudItem xs="12" sm="6" md="4">
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="int" Label="Seller company" Value="_sellerCompanyId"
+                       ValueChanged="OnSellerChanged" Required="true">
+                @foreach (var s in _sellers)
+                {
+                    <MudSelectItem T="int" Value="s.Id">@s.ShortName</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
             <MudSelect T="int" Label="Customer" Value="_customerId"
                        ValueChanged="OnCustomerChanged" Required="true">
                 @foreach (var c in _customers)
@@ -54,7 +64,7 @@ else
         <MudItem xs="6" sm="3" md="2">
             <MudTextField @bind-Value="_currency" Label="Currency" Required="true" />
         </MudItem>
-        <MudItem xs="12" sm="12" md="4" Class="d-flex align-center">
+        <MudItem xs="12" sm="12" md="2" Class="d-flex align-center">
             <MudText Typo="Typo.body2">
                 From <b>@_fileName</b> — @_sheet!.Rows.Count row(s),
                 @IncludedLines.Count() ready to import.
@@ -178,10 +188,12 @@ else
     private readonly List<ImportLine> _lines = [];
 
     private List<Customer> _customers = [];
+    private List<SellerCompany> _sellers = [];
     private List<Product> _products = [];
     private Dictionary<int, Product> _productLookup = [];
 
     private int _customerId;
+    private int _sellerCompanyId;
     private DateTime? _orderDate = DateTime.Today;
     private string _currency = "USD";
 
@@ -246,9 +258,14 @@ else
     private async Task LoadCatalogAsync()
     {
         _customers = await CustomerService.GetAllAsync();
+        _sellers = await SellerCompanyService.GetAllAsync();
         _products = await ProductService.GetAllAsync(includeInactive: false);
         _productLookup = _products.ToDictionary(p => p.Id);
+        if (_sellerCompanyId == 0 && _sellers.Count > 0)
+            _sellerCompanyId = _sellers[0].Id;
     }
+
+    private void OnSellerChanged(int sellerId) => _sellerCompanyId = sellerId;
 
     private void BuildLines()
     {
@@ -318,6 +335,11 @@ else
 
     private async Task Create()
     {
+        if (_sellerCompanyId == 0)
+        {
+            Snackbar.Add("Choose a seller company.", Severity.Error);
+            return;
+        }
         if (_customerId == 0)
         {
             Snackbar.Add("Choose a customer.", Severity.Error);
@@ -336,12 +358,18 @@ else
         }
 
         var customer = _customers.First(c => c.Id == _customerId);
+        var seller = _sellers.First(s => s.Id == _sellerCompanyId);
         var order = new Order
         {
             CustomerId = _customerId,
+            SellerCompanyId = _sellerCompanyId,
             OrderDate = DateOnly.FromDateTime(_orderDate ?? DateTime.Today),
             Currency = _currency.Trim().ToUpperInvariant(),
             Incoterm = customer.DefaultIncoterm ?? "",
+            PaymentTerms = PaymentTermText.Of(customer.PaymentType),
+            BankDetails = seller.DefaultBankDetails,
+            DeliveryTime = seller.DefaultDeliveryTime,
+            Validity = seller.DefaultValidity,
         };
         foreach (var line in included)
         {

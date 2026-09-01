@@ -9,6 +9,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Product> Products => Set<Product>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderLine> OrderLines => Set<OrderLine>();
+    public DbSet<SellerCompany> SellerCompanies => Set<SellerCompany>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -28,6 +29,19 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(c => c.DefaultCurrency).HasMaxLength(3).IsRequired();
             e.Property(c => c.TaxId).HasMaxLength(50);
             e.Property(c => c.ContactPhone).HasMaxLength(50);
+            e.Property(c => c.PaymentType).HasConversion<string>().HasMaxLength(40);
+        });
+
+        model.Entity<SellerCompany>(e =>
+        {
+            e.Property(s => s.Name).HasMaxLength(200).IsRequired();
+            e.Property(s => s.ShortName).HasMaxLength(60).IsRequired();
+            e.Property(s => s.ProformaTemplate).HasConversion<string>().HasMaxLength(40);
+            e.Property(s => s.NumberFormat).HasConversion<string>().HasMaxLength(40);
+            e.Property(s => s.LetterheadPath).HasMaxLength(260);
+            e.Property(s => s.DefaultDeliveryTime).HasMaxLength(120);
+            e.Property(s => s.DefaultValidity).HasMaxLength(120);
+            e.Property(s => s.CountryOfOrigin).HasMaxLength(80);
         });
 
         model.Entity<Product>(e =>
@@ -41,11 +55,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.Property(o => o.OrderNumber).HasMaxLength(50).IsRequired();
             e.Property(o => o.Currency).HasMaxLength(3).IsRequired();
+            e.Property(o => o.DeliveryTime).HasMaxLength(120);
+            e.Property(o => o.Validity).HasMaxLength(120);
             e.HasIndex(o => o.OrderNumber).IsUnique();
 
             e.HasOne(o => o.Customer)
                 .WithMany(c => c.Orders)
                 .HasForeignKey(o => o.CustomerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(o => o.SellerCompany)
+                .WithMany(s => s.Orders)
+                .HasForeignKey(o => o.SellerCompanyId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

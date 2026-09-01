@@ -8,6 +8,8 @@ public static class SeedData
 {
     public static async Task EnsureSeededAsync(AppDbContext db)
     {
+        await EnsureSellerCompaniesAsync(db);
+
         if (await db.Products.AnyAsync() || await db.Customers.AnyAsync())
             return;
 
@@ -25,6 +27,7 @@ public static class SeedData
                 ContactName = "H. Muster",
                 ContactEmail = "purchasing@muster-example.de",
                 ContactPhone = "+49 40 123456",
+                PaymentType = PaymentTerm.Prepayment100,
             },
             new Customer
             {
@@ -38,6 +41,7 @@ public static class SeedData
                 ContactName = "A. Rahman",
                 ContactEmail = "orders@gulfspare-example.ae",
                 ContactPhone = "+971 4 223 4455",
+                PaymentType = PaymentTerm.Advance40Balance60,
             });
 
         db.Products.AddRange(
@@ -85,6 +89,51 @@ public static class SeedData
                 UnitsPerCarton = 40,
                 CartonLengthCm = 55, CartonWidthCm = 40, CartonHeightCm = 30,
                 CartonTareWeightKg = 0.6m, DefaultUnitPrice = 2.65m,
+            });
+
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>Seeds the two exporting companies once. Runs on every startup
+    /// (independently of the sample customers/products) so existing databases
+    /// pick them up. Order 1 is Filtorq — the migration back-fills existing
+    /// orders to it.</summary>
+    private static async Task EnsureSellerCompaniesAsync(AppDbContext db)
+    {
+        if (await db.SellerCompanies.AnyAsync())
+            return;
+
+        db.SellerCompanies.AddRange(
+            new SellerCompany
+            {
+                Name = "Filtorq Filtre İthalat İhracat Sanayi ve Tic. A.Ş.",
+                ShortName = "Filtorq",
+                ProformaTemplate = ProformaTemplate.FiltorqClassic,
+                NumberFormat = SellerNumberFormat.ExpYearSeq,
+                LetterheadPath = "wwwroot/proforma-letterhead.png",
+                DefaultBankDetails = string.Join('\n',
+                    "Company Name : Filtorq Filtre İthalat İhracat Sanayi ve Tic. A.Ş.",
+                    "Our Bank : TÜRKİYE CUMHURİYETİ ZİRAAT BANKASI A.Ş.",
+                    "Swift Code : TCZBTR2AXXX",
+                    "IBAN NO : TR62 0001 0020 6383 4792 2750 06"),
+            },
+            new SellerCompany
+            {
+                Name = "İkiler Otomotiv Filtre İthalat İhracat Sanayi ve Ticaret A.Ş.",
+                ShortName = "İkiler",
+                ProformaTemplate = ProformaTemplate.IkilerGrid,
+                NumberFormat = SellerNumberFormat.DateSlashSeq,
+                LetterheadPath = "wwwroot/ikiler-letterhead.png",
+                DefaultDeliveryTime = "6 WEEKS",
+                DefaultValidity = "2 WEEKS FROM PROFORMA DATE",
+                DefaultBankDetails = string.Join('\n',
+                    "Company Name : İkiler Otomotiv Filtre İthalat İhracat Sanayi ve Ticaret Anonim Şirketi",
+                    "Our Bank : ZİRAAT BANKASI",
+                    "Branch : Denizli Ticari",
+                    "Branch Code : 2142",
+                    "Account No : 2063 3710 2798 5013",
+                    "Swift Code : TCZBTR2AXXX",
+                    "IBAN NO : TR 9200 0100 2063 3710 2798 5013"),
             });
 
         await db.SaveChangesAsync();

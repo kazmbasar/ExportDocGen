@@ -33,17 +33,19 @@ public class OrderService(
         return await db.Orders
             .AsNoTracking()
             .Include(o => o.Customer)
+            .Include(o => o.SellerCompany)
             .Include(o => o.Lines).ThenInclude(l => l.Product)
             .FirstOrDefaultAsync(o => o.Id == id);
     }
-
-    public Task<string> NextOrderNumberAsync() => numberGenerator.NextAsync();
 
     public async Task<int> CreateAsync(Order order)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
 
-        order.OrderNumber = await numberGenerator.NextAsync(order.OrderDate.Year);
+        var seller = await db.SellerCompanies.FirstOrDefaultAsync(s => s.Id == order.SellerCompanyId)
+            ?? throw new InvalidOperationException("Choose a seller company for the order.");
+
+        order.OrderNumber = await numberGenerator.NextAsync(seller, order.OrderDate);
         order.CreatedUtc = DateTime.UtcNow;
         Renumber(order.Lines);
         // Attach only the FK, not the navigation, so EF doesn't try to insert products.
@@ -64,10 +66,14 @@ public class OrderService(
             ?? throw new InvalidOperationException($"Order {order.Id} not found.");
 
         existing.CustomerId = order.CustomerId;
+        existing.SellerCompanyId = order.SellerCompanyId;
         existing.OrderDate = order.OrderDate;
         existing.Incoterm = order.Incoterm;
         existing.Currency = order.Currency;
         existing.PaymentTerms = order.PaymentTerms;
+        existing.BankDetails = order.BankDetails;
+        existing.DeliveryTime = order.DeliveryTime;
+        existing.Validity = order.Validity;
         existing.Notes = order.Notes;
 
         Renumber(order.Lines);

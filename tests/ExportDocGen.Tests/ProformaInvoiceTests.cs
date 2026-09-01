@@ -114,6 +114,7 @@ public class ProformaInvoiceTests
         using var factory = new SqliteTestFactory();
         var customers = new CustomerService(factory);
         var orders = new OrderService(factory, new OrderNumberGenerator(factory));
+        var seller = await TestData.SeedSellerAsync(factory);
 
         var customer = await customers.CreateAsync(new Customer
         {
@@ -135,7 +136,8 @@ public class ProformaInvoiceTests
         }
         var id = await orders.CreateAsync(new Order
         {
-            CustomerId = customer.Id, Currency = "EUR", OrderDate = new DateOnly(2026, 8, 31),
+            CustomerId = customer.Id, SellerCompanyId = seller.Id, Currency = "EUR",
+            OrderDate = new DateOnly(2026, 8, 31),
             Lines = { new OrderLine { ProductId = product.Id, Quantity = 24, UnitPrice = 7.4m } },
         });
 

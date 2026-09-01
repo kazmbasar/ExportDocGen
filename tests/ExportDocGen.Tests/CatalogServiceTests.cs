@@ -11,6 +11,7 @@ public class CatalogServiceTests
         using var factory = new SqliteTestFactory();
         var customers = new CustomerService(factory);
         var orders = new OrderService(factory, new OrderNumberGenerator(factory));
+        var seller = await TestData.SeedSellerAsync(factory);
 
         var customer = await customers.CreateAsync(new Customer
         {
@@ -25,7 +26,8 @@ public class CatalogServiceTests
         }
         await orders.CreateAsync(new Order
         {
-            CustomerId = customer.Id, Currency = "EUR", OrderDate = new DateOnly(2026, 1, 1),
+            CustomerId = customer.Id, SellerCompanyId = seller.Id, Currency = "EUR",
+            OrderDate = new DateOnly(2026, 1, 1),
             Lines = { new OrderLine { ProductId = product.Id, Quantity = 1, UnitPrice = 1m } },
         });
 
@@ -40,6 +42,7 @@ public class CatalogServiceTests
         var products = new ProductService(factory);
         var customers = new CustomerService(factory);
         var orders = new OrderService(factory, new OrderNumberGenerator(factory));
+        var seller = await TestData.SeedSellerAsync(factory);
 
         var customer = await customers.CreateAsync(new Customer
         {
@@ -51,7 +54,8 @@ public class CatalogServiceTests
         });
         await orders.CreateAsync(new Order
         {
-            CustomerId = customer.Id, Currency = "EUR", OrderDate = new DateOnly(2026, 1, 1),
+            CustomerId = customer.Id, SellerCompanyId = seller.Id, Currency = "EUR",
+            OrderDate = new DateOnly(2026, 1, 1),
             Lines = { new OrderLine { ProductId = product.Id, Quantity = 1, UnitPrice = 1m } },
         });
 
