@@ -5,6 +5,19 @@ revisit.
 
 ---
 
+## 2026-09-02 — MVP complete; next is UI polish.
+
+Kazim ran a real export order through the app end to end and confirmed it
+"works efficiently" — the MVP success criterion is met (proforma + packing list
++ commercial invoice, PDF and editable Excel, for both companies).
+
+**Next milestone: M9 — UI polish.** Kazim: *"first make more beautiful UI for
+this generator, after that we will decide."* A visual / UX pass only over the
+existing MudBlazor screens — theme, spacing, layout, empty states, icons,
+responsiveness. **No new features, no data-model or document changes.** Scope
+the specifics with Kazim before starting. Direction after that is undecided
+(stretch goals, or the OEM cross-reference project).
+
 ## 2026-09-02 — M7b: packing list PDF matched to the real document.
 
 `~/Downloads/sample PACKING LIST.pdf` (a real İkiler → LLC Global Expo issued

@@ -24,7 +24,8 @@ automatically.
 
 **Success criterion:** Kazim produces the proforma invoice **and** packing list
 for one real export order entirely from the app, with no manual editing of the
-output.
+output. — **met 2026-09-02** (also produces the commercial invoice + editable
+Excel).
 
 ## MVP scope
 
@@ -145,12 +146,22 @@ output.
       weight and gross weight, an inline totals row, and the shipment totals
       box. Turkish comma decimals (`DocFormat.Weight` / `.Volume`). The
       per-company letterhead is kept (the sample has none — Kazim's choice).
+- [x] **Real end-to-end run.** _(2026-09-02)_ Kazim ran a real export order
+      through the app and produced its documents — "works efficiently". The MVP
+      success criterion is met.
+- [ ] **M9 — UI polish (planned 2026-09-02, do next).** Kazim: *"first make more
+      beautiful UI for this generator, after that we will decide."* Purely a
+      visual / UX pass over the existing MudBlazor screens (dashboard, customer /
+      product / order lists and forms, the order builder, the document menu) —
+      theme, spacing, layout, empty states, iconography, responsiveness. No new
+      features; no data-model or document changes. Scope the specifics with
+      Kazim before starting.
 - [ ] **Stock import UX.** A browser `/products/import` page; real gross weights;
       price data.
 - [ ] Filtorq-specific commercial-invoice layout (if their real one differs).
 
-Next: use it for a real order end to end, then pick up stretch goals or start
-the cross-reference project.
+Next: **M9 UI polish**, then Kazim decides the direction (stretch goals or the
+cross-reference project).
 
 ## Excel order import (M5) — as built
 
