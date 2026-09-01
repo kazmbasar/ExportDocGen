@@ -44,9 +44,20 @@ dotnet run --project src/ExportDocGen
 # then open http://localhost:5083
 ```
 
-On startup the app **auto-applies EF Core migrations** and **seeds sample data**
-(2 customers, 5 filter products) into a SQLite file at
+On startup the app **auto-applies EF Core migrations** and seeds the two seller
+companies + 2 sample customers into a SQLite file at
 `~/.local/share/ExportDocGen/exportdocgen.db`. Delete that folder to reset.
+
+The product catalogue is the real stock database. Export `stocks.ods` to `.xlsx`,
+then load it:
+
+```bash
+dotnet run --project src/ExportDocGen -- import-stock path/to/stocks.xlsx           # dry run
+dotnet run --project src/ExportDocGen -- import-stock path/to/stocks.xlsx --replace  # wipe + import
+```
+
+Only rows whose type contains "FILTER" are imported; gross weight is set to
+net × 1.05 (the file has no gross figure).
 
 Add a migration after changing an entity:
 

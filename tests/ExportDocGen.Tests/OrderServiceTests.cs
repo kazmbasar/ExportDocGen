@@ -16,8 +16,8 @@ public class OrderServiceTests
             Name = "Test Buyer", SellerCompanyId = seller.Id, AddressLine1 = "1 Road",
             Country = "Germany", DefaultIncoterm = "CIF Hamburg", DefaultCurrency = "EUR",
         };
-        var p1 = new Product { PartNumber = "P-1", Description = "Filter 1", UnitsPerCarton = 10, DefaultUnitPrice = 5m };
-        var p2 = new Product { PartNumber = "P-2", Description = "Filter 2", UnitsPerCarton = 20, DefaultUnitPrice = 3m };
+        var p1 = new Product { PartNumber = "P-1", Description = "Filter 1", NetWeightKg = 1m, GrossWeightKg = 1.05m, UnitVolumeM3 = 0.004m, DefaultUnitPrice = 5m };
+        var p2 = new Product { PartNumber = "P-2", Description = "Filter 2", NetWeightKg = 0.5m, GrossWeightKg = 0.525m, UnitVolumeM3 = 0.002m, DefaultUnitPrice = 3m };
         db.AddRange(customer, p1, p2);
         await db.SaveChangesAsync();
 

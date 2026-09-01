@@ -18,12 +18,8 @@ public class PackingListTests
         HsCode = "8421.31",
         FilterType = type,
         NetWeightKg = 0.8m,
-        GrossWeightKg = 0.9m,
-        UnitsPerCarton = 10,
-        CartonLengthCm = 40,
-        CartonWidthCm = 30,
-        CartonHeightCm = 20,
-        CartonTareWeightKg = 0.4m,
+        GrossWeightKg = 0.84m,
+        UnitVolumeM3 = 0.0075m,
     };
 
     private static Order SampleOrder()
@@ -83,7 +79,6 @@ public class PackingListTests
 
         // Totals come straight from CalculationService — guards the line pairing.
         Assert.Equal(155, model.TotalQuantity);
-        Assert.Equal(calc.TotalCartons, model.TotalCartons);
         Assert.Equal(calc.TotalNetWeightKg, model.TotalNetWeightKg);
         Assert.Equal(calc.TotalGrossWeightKg, model.TotalGrossWeightKg);
         Assert.Equal(calc.TotalVolumeM3, model.TotalVolumeM3);
@@ -125,8 +120,7 @@ public class PackingListTests
             product = new Product
             {
                 PartNumber = "A1209", Description = "Air filter", FilterType = "air",
-                NetWeightKg = 0.8m, GrossWeightKg = 0.9m, UnitsPerCarton = 12,
-                CartonLengthCm = 60, CartonWidthCm = 40, CartonHeightCm = 45, CartonTareWeightKg = 0.9m,
+                NetWeightKg = 0.8m, GrossWeightKg = 0.84m, UnitVolumeM3 = 0.01m,
             };
             db.Add(product);
             await db.SaveChangesAsync();

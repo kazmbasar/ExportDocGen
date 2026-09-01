@@ -5,6 +5,37 @@ revisit.
 
 ---
 
+## 2026-09-01 — Real stock catalogue import.
+
+Kazim's stock database (`~/Documents/stocks.ods`, ~19,400 rows) replaces the 5
+sample products. Columns: `Description` (code) · `MENŞEİ` (origin) · `MARKA`
+(brand) · `CİNSİ` (type) · `GTIP` (customs code) · `Net weight` · `MU` (unit,
+always KG) · `m3` (per-unit volume).
+
+**Decided:**
+- **`Product` gains `Origin`, `Brand`, `UnitVolumeM3`; loses the carton model**
+  (`UnitsPerCarton`, `CartonLengthCm/WidthCm/HeightCm`, `CartonTareWeightKg`).
+  The stock file has no per-SKU carton data, so `CalculationService` is now pure
+  per-unit arithmetic: net / gross / volume = quantity × the catalogue figure.
+  Migration `AddStockCatalogFields`. The packing list drops its "Cartons" column
+  and gains an "Origin" column; the order builder drops the "Cartons" tile.
+- **Gross weight = net × 1.05** (not in the file). Confirmed with Kazim.
+- **Import filters only** — rows whose `CİNSİ` contains "FILTER" (~16,600 of
+  ~19,400). Bedding, promos, wipers, etc. are skipped.
+- **`FilterType`** is derived from `CİNSİ` (air/oil/fuel/cabin/water); `HsCode`
+  keeps the full Turkish GTİP verbatim.
+- **`StockCatalogImportService`** (ClosedXML, mirrors `ExcelOrderImportParser`):
+  `Parse(Stream)` → rows + a skip/zero summary; `ReplaceCatalogueAsync` wipes and
+  batch-inserts, refusing if any product is on an order line. Run headless:
+  `dotnet run --project src/ExportDocGen -- import-stock <stocks.xlsx> --replace`
+  (ClosedXML needs `.xlsx`, so export the ODS first). No browser page yet.
+- **Order builder / import product picker** switched from `MudSelect` to
+  `MudAutocomplete` (16k options); the product list is paged.
+- **Replaced the catalogue** — deleted the test order and wiped the 5 samples.
+
+**Revisit if:** Kazim wants real gross weights, a carton/pallet model, price
+data, the non-filter stock, or a self-service browser import screen.
+
 ## 2026-09-01 — M7: packing list PDF.
 
 **Decided:**

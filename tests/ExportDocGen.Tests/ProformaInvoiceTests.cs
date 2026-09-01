@@ -16,12 +16,8 @@ public class ProformaInvoiceTests
         PartNumber = part,
         Description = $"{part} filter",
         NetWeightKg = 0.5m,
-        GrossWeightKg = 0.6m,
-        UnitsPerCarton = 10,
-        CartonLengthCm = 40,
-        CartonWidthCm = 30,
-        CartonHeightCm = 20,
-        CartonTareWeightKg = 0.4m,
+        GrossWeightKg = 0.525m,
+        UnitVolumeM3 = 0.004m,
     };
 
     private static Order SampleOrder()
@@ -158,7 +154,7 @@ public class ProformaInvoiceTests
         Product product;
         await using (var db = factory.CreateDbContext())
         {
-            product = new Product { PartNumber = "A1209", Description = "Air filter", FilterType = "air", UnitsPerCarton = 10 };
+            product = new Product { PartNumber = "A1209", Description = "Air filter", FilterType = "air", NetWeightKg = 0.6m, GrossWeightKg = 0.63m, UnitVolumeM3 = 0.005m };
             db.Add(product);
             await db.SaveChangesAsync();
         }
@@ -197,9 +193,7 @@ public class ProformaInvoiceTests
             product = new Product
             {
                 PartNumber = "AF-1042", Description = "Air filter",
-                NetWeightKg = 0.8m, GrossWeightKg = 0.9m, UnitsPerCarton = 12,
-                CartonLengthCm = 60, CartonWidthCm = 40, CartonHeightCm = 45,
-                CartonTareWeightKg = 0.9m,
+                NetWeightKg = 0.8m, GrossWeightKg = 0.84m, UnitVolumeM3 = 0.01m,
             };
             db.Add(product);
             await db.SaveChangesAsync();

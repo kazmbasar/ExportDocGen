@@ -21,7 +21,7 @@ public class CatalogServiceTests
         Product product;
         await using (var db = factory.CreateDbContext())
         {
-            product = new Product { PartNumber = "P-1", Description = "F", UnitsPerCarton = 1 };
+            product = new Product { PartNumber = "P-1", Description = "F" };
             db.Add(product);
             await db.SaveChangesAsync();
         }
@@ -52,7 +52,7 @@ public class CatalogServiceTests
         });
         var product = await products.CreateAsync(new Product
         {
-            PartNumber = "P-1", Description = "F", UnitsPerCarton = 1,
+            PartNumber = "P-1", Description = "F",
         });
         await orders.CreateAsync(new Order
         {
@@ -70,8 +70,8 @@ public class CatalogServiceTests
         using var factory = new SqliteTestFactory();
         var products = new ProductService(factory);
 
-        var a = await products.CreateAsync(new Product { PartNumber = "AF-1", Description = "a", UnitsPerCarton = 1 });
-        await products.CreateAsync(new Product { PartNumber = "AF-2", Description = "b", UnitsPerCarton = 1 });
+        var a = await products.CreateAsync(new Product { PartNumber = "AF-1", Description = "a" });
+        await products.CreateAsync(new Product { PartNumber = "AF-2", Description = "b" });
 
         Assert.True(await products.PartNumberExistsAsync("AF-1"));
         // Editing row a: its own part number must not count as a clash...

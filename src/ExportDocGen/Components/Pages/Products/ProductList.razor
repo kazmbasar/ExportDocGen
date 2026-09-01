@@ -15,20 +15,21 @@
 </MudStack>
 
 <MudDataGrid T="Product" Items="_products" Loading="_loading" Dense="true" Hover="true"
-             QuickFilter="_quickFilter" SortMode="SortMode.Multiple">
+             QuickFilter="_quickFilter" SortMode="SortMode.Multiple" RowsPerPage="25">
     <ToolBarContent>
         <MudTextField @bind-Value="_search" Placeholder="Search" Immediate="true"
                       Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
                       IconSize="Size.Medium" Class="mt-0" Clearable="true" />
     </ToolBarContent>
     <Columns>
-        <PropertyColumn Property="p => p.PartNumber" Title="Part no." />
+        <PropertyColumn Property="p => p.PartNumber" Title="Stock code" />
         <PropertyColumn Property="p => p.Description" Title="Description" />
-        <PropertyColumn Property="p => p.FilterType" Title="Type" />
+        <PropertyColumn Property="p => p.Brand" Title="Brand" />
+        <PropertyColumn Property="p => p.Origin" Title="Origin" />
         <PropertyColumn Property="p => p.HsCode" Title="HS code" />
         <PropertyColumn Property="p => p.NetWeightKg" Title="Net kg" Format="0.###" />
         <PropertyColumn Property="p => p.GrossWeightKg" Title="Gross kg" Format="0.###" />
-        <PropertyColumn Property="p => p.UnitsPerCarton" Title="Units/ctn" />
+        <PropertyColumn Property="p => p.UnitVolumeM3" Title="m³/unit" Format="0.######" />
         <PropertyColumn Property="p => p.DefaultUnitPrice" Title="Price" Format="0.00" />
         <TemplateColumn Title="Active" Sortable="false">
             <CellTemplate>
@@ -52,8 +53,11 @@
         </TemplateColumn>
     </Columns>
     <NoRecordsContent>
-        <MudText>No products yet. Add one to get started.</MudText>
+        <MudText>No products yet. Add one, or import the stock file.</MudText>
     </NoRecordsContent>
+    <PagerContent>
+        <MudDataGridPager T="Product" PageSizeOptions="new[] { 25, 50, 100 }" />
+    </PagerContent>
 </MudDataGrid>
 
 @code {
@@ -67,7 +71,8 @@
         var s = _search.Trim();
         return p.PartNumber.Contains(s, StringComparison.OrdinalIgnoreCase)
             || p.Description.Contains(s, StringComparison.OrdinalIgnoreCase)
-            || (p.FilterType?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (p.Brand?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (p.Origin?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false)
             || (p.HsCode?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false);
     };
 
@@ -120,11 +125,10 @@
 
     private static Product Clone(Product p) => new()
     {
-        Id = p.Id, PartNumber = p.PartNumber, Description = p.Description, HsCode = p.HsCode,
-        FilterType = p.FilterType, NetWeightKg = p.NetWeightKg, GrossWeightKg = p.GrossWeightKg,
-        UnitsPerCarton = p.UnitsPerCarton, CartonLengthCm = p.CartonLengthCm,
-        CartonWidthCm = p.CartonWidthCm, CartonHeightCm = p.CartonHeightCm,
-        CartonTareWeightKg = p.CartonTareWeightKg, DefaultUnitPrice = p.DefaultUnitPrice,
+        Id = p.Id, PartNumber = p.PartNumber, Description = p.Description,
+        Origin = p.Origin, Brand = p.Brand, HsCode = p.HsCode, FilterType = p.FilterType,
+        NetWeightKg = p.NetWeightKg, GrossWeightKg = p.GrossWeightKg,
+        UnitVolumeM3 = p.UnitVolumeM3, DefaultUnitPrice = p.DefaultUnitPrice,
         IsActive = p.IsActive,
     };
 }

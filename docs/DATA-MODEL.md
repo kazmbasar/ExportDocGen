@@ -52,21 +52,23 @@ Replaces the former `CompanyProfile` config.
 
 ### Product
 
+Loaded from the company stock database (`stocks.ods` → xlsx) via
+`StockCatalogImportService`; the columns map to the stock file's
+`Description / MENŞEİ / MARKA / CİNSİ / GTIP / Net weight / m3`.
+
 | Field | Type | Notes |
 |-------|------|-------|
 | Id | int | PK, identity |
-| PartNumber | string | required, unique |
-| Description | string | required |
-| HsCode | string? | Harmonized System code |
-| FilterType | string? | air / oil / fuel / cabin — free text for now |
-| NetWeightKg | decimal | per unit |
-| GrossWeightKg | decimal | per unit (incl. individual packaging) |
-| UnitsPerCarton | int | required, > 0 |
-| CartonLengthCm | decimal | outer carton |
-| CartonWidthCm | decimal | outer carton |
-| CartonHeightCm | decimal | outer carton |
-| CartonTareWeightKg | decimal | empty carton weight — default 0 |
-| DefaultUnitPrice | decimal? | optional catalog price |
+| PartNumber | string | stock code ("Description"), required, unique |
+| Description | string | type ("CİNSİ"), e.g. "AIR FILTER"; required |
+| Origin | string? | country of manufacture ("MENŞEİ") |
+| Brand | string? | "MARKA", e.g. "FLEETGUARD" |
+| HsCode | string? | Turkish customs code ("GTİP"), verbatim |
+| FilterType | string? | air / oil / fuel / cabin / water — derived from the description |
+| NetWeightKg | decimal | per unit ("Net weight", always kg) |
+| GrossWeightKg | decimal | per unit — **not in the file; set to net × 1.05 on import** |
+| UnitVolumeM3 | decimal | per unit ("m3") |
+| DefaultUnitPrice | decimal? | not in the file — optional, hand-entered |
 | IsActive | bool | default true — hide discontinued parts |
 
 ### Order
@@ -98,8 +100,8 @@ Replaces the former `CompanyProfile` config.
 | UnitPrice | decimal | in the order's currency |
 | LineNumber | int | display order on documents |
 
-At order time, product attributes (weights, carton data, description, HS code)
-are **read live from the Product**. If the catalog might change after an order is
+At order time, product attributes (weights, volume, description, HS code) are
+**read live from the Product**. If the catalog might change after an order is
 issued, snapshot these onto `OrderLine` later — deferred for MVP, noted in
 [DECISIONS.md](DECISIONS.md).
 
@@ -119,43 +121,36 @@ SellerCompany 1 ──< Customer 1 ──< Order 1 ──< OrderLine >── 1 P
 Computed by a `CalculationService` and shown live on the order screen and on the
 PDFs.
 
+Every figure is a per-unit value from the stock catalogue × quantity — there is
+no carton model (the stock file has no per-SKU carton data).
+
 ### Per line
 
 ```
-lineNet   = quantity * product.NetWeightKg
-lineGross = quantity * product.GrossWeightKg
-lineTotal = quantity * unitPrice
-
-cartons(line)   = ceil(quantity / product.UnitsPerCarton)
-cartonTare(line)= cartons(line) * product.CartonTareWeightKg
-lineShipGross   = lineGross + cartonTare(line)
-
-lineVolumeM3 = cartons(line)
-             * (product.CartonLengthCm / 100)
-             * (product.CartonWidthCm  / 100)
-             * (product.CartonHeightCm / 100)
+lineNet      = quantity * product.NetWeightKg
+lineGross    = quantity * product.GrossWeightKg    # gross = net × 1.05 (set on import)
+lineVolumeM3 = quantity * product.UnitVolumeM3     # CBM
+lineTotal    = quantity * unitPrice
 ```
 
 ### Order totals
 
 ```
-orderTotal        = sum(lineTotal)
-totalNetWeightKg  = sum(lineNet)
-totalGrossWeightKg= sum(lineShipGross)          # product gross + carton tare
-totalCartons      = sum(cartons(line))
-totalVolumeM3     = sum(lineVolumeM3)           # CBM
+orderTotal         = sum(lineTotal)
+totalNetWeightKg   = sum(lineNet)
+totalGrossWeightKg = sum(lineGross)
+totalVolumeM3      = sum(lineVolumeM3)             # CBM
 ```
 
 ### Assumptions (MVP)
 
-- Each line ships in **whole cartons**; partial cartons round **up**.
-- No mixed-product cartons.
-- No pallet weight/dimension modelling yet.
+- Gross weight = net × 1.05 (the stock file has no gross figure).
+- Weights / volume are per-unit × quantity — no carton or pallet modelling.
+- ~215 stock rows have a 0 net weight and ~388 a 0 volume in the source file;
+  imported as-is (fix in the product editor when needed).
 
-Revisit these against a real shipment if they turn out wrong (see PLANNING risks).
+## Seed data
 
-## Seed data (for M1)
-
-- 2 customers (e.g. one EU, one non-EU).
-- ~5 products across air / oil / fuel filter types with realistic weights and
-  carton sizes.
+- 2 sample customers (one EU, one non-EU), one per exporter company.
+- **No seed products** — the catalogue is the real stock database, loaded via
+  `StockCatalogImportService` (~16,600 filter rows).

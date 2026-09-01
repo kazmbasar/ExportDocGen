@@ -116,18 +116,26 @@ output.
         `PackingListModel` + `PackingListDocument` (one shared A4-portrait layout;
         each company's letterhead swapped in) + `OrderDocumentService`
         `.BuildPackingListAsync`. Columns: `# · code · description · HS code ·
-        qty · cartons · net kg · gross kg · CBM`, then the shipment totals
-        (quantity, cartons, net & gross weight, CBM). All figures from
-        `CalculationService` (M4). Formatting shared via a new `DocFormat`
+        origin · qty · net kg · gross kg · CBM`, then the shipment totals
+        (quantity, net & gross weight, CBM). All figures from
+        `CalculationService`. Formatting shared via a new `DocFormat`
         helper (also now used by the two proforma documents).
       - **Order list** (`/orders`) — Exporter column + company filter; quick
         filter also matches the exporter; per-row "Packing list PDF" button
         (also on the order editor). Newest-first ordering (`CreatedUtc`).
       - v1 layout — to be tightened against a real issued packing list (M7b),
         the same loop as M6 → M6b. 36 tests.
+- [x] **Real stock catalogue.** _(2026-09-01)_ Kazim's stock database
+      (`stocks.ods`, ~19,400 rows) replaces the sample products. `Product` gains
+      Origin / Brand / per-unit CBM and **loses the carton model**;
+      `CalculationService` is now pure per-unit arithmetic (gross = net × 1.05).
+      `StockCatalogImportService` + a `dotnet run -- import-stock` command load
+      ~16,600 filter rows. See `docs/DECISIONS.md`.
 - [ ] **M7b — Match the packing list to a real issued document.** Kazim to
       supply one; refine `PackingListDocument` (per-company split only if their
       real layouts differ).
+- [ ] **Stock import UX.** A browser `/products/import` page; real gross weights;
+      price data.
 
 After M7b: use it for a real order end to end, then pick up stretch goals or
 start the cross-reference project.

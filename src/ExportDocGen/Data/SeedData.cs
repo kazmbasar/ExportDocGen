@@ -3,14 +3,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ExportDocGen.Data;
 
-/// <summary>Inserts sample customers and products on first run so the app is not empty.</summary>
+/// <summary>Seeds the two seller companies (always) and a couple of sample
+/// customers (first run only). The product catalogue comes from the real stock
+/// database — see <c>StockCatalogImportService</c> — not from seed data.</summary>
 public static class SeedData
 {
     public static async Task EnsureSeededAsync(AppDbContext db)
     {
         await EnsureSellerCompaniesAsync(db);
 
-        if (await db.Products.AnyAsync() || await db.Customers.AnyAsync())
+        if (await db.Customers.AnyAsync())
             return;
 
         var filtorq = await db.SellerCompanies.FirstAsync(s => s.ShortName == "Filtorq");
@@ -47,53 +49,6 @@ public static class SeedData
                 ContactEmail = "orders@gulfspare-example.ae",
                 ContactPhone = "+971 4 223 4455",
                 PaymentType = PaymentTerm.Advance40Balance60,
-            });
-
-        db.Products.AddRange(
-            new Product
-            {
-                PartNumber = "AF-1042", Description = "Air filter element, heavy-duty truck",
-                HsCode = "8421.31", FilterType = "air",
-                NetWeightKg = 0.85m, GrossWeightKg = 0.95m,
-                UnitsPerCarton = 12,
-                CartonLengthCm = 60, CartonWidthCm = 40, CartonHeightCm = 45,
-                CartonTareWeightKg = 0.9m, DefaultUnitPrice = 7.40m,
-            },
-            new Product
-            {
-                PartNumber = "OF-2210", Description = "Oil filter, spin-on, passenger car",
-                HsCode = "8421.23", FilterType = "oil",
-                NetWeightKg = 0.32m, GrossWeightKg = 0.36m,
-                UnitsPerCarton = 24,
-                CartonLengthCm = 40, CartonWidthCm = 30, CartonHeightCm = 25,
-                CartonTareWeightKg = 0.6m, DefaultUnitPrice = 2.10m,
-            },
-            new Product
-            {
-                PartNumber = "FF-3305", Description = "Fuel filter, diesel, water separator",
-                HsCode = "8421.23", FilterType = "fuel",
-                NetWeightKg = 0.41m, GrossWeightKg = 0.47m,
-                UnitsPerCarton = 20,
-                CartonLengthCm = 45, CartonWidthCm = 30, CartonHeightCm = 30,
-                CartonTareWeightKg = 0.7m, DefaultUnitPrice = 4.85m,
-            },
-            new Product
-            {
-                PartNumber = "CF-4120", Description = "Cabin air filter, activated carbon",
-                HsCode = "8421.39", FilterType = "cabin",
-                NetWeightKg = 0.22m, GrossWeightKg = 0.26m,
-                UnitsPerCarton = 30,
-                CartonLengthCm = 50, CartonWidthCm = 40, CartonHeightCm = 20,
-                CartonTareWeightKg = 0.5m, DefaultUnitPrice = 3.30m,
-            },
-            new Product
-            {
-                PartNumber = "AF-1088", Description = "Air filter panel, passenger car",
-                HsCode = "8421.31", FilterType = "air",
-                NetWeightKg = 0.18m, GrossWeightKg = 0.21m,
-                UnitsPerCarton = 40,
-                CartonLengthCm = 55, CartonWidthCm = 40, CartonHeightCm = 30,
-                CartonTareWeightKg = 0.6m, DefaultUnitPrice = 2.65m,
             });
 
         await db.SaveChangesAsync();

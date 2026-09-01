@@ -31,19 +31,36 @@ builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<CalculationService>();
 builder.Services.AddScoped<OrderDocumentService>();
 builder.Services.AddSingleton<ExcelOrderImportParser>();
+builder.Services.AddScoped<StockCatalogImportService>();
 
 // QuestPDF Community license (free for companies under the revenue threshold).
 QuestPDF.Settings.License = LicenseType.Community;
 
 var app = builder.Build();
 
-// Apply migrations and seed sample data on startup.
+// Apply migrations and seed the seller companies / sample customers on startup.
 using (var scope = app.Services.CreateScope())
 {
     var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>();
     await using var db = await factory.CreateDbContextAsync();
     await db.Database.MigrateAsync();
     await SeedData.EnsureSeededAsync(db);
+}
+
+// One-off / repeatable stock-catalogue import (no HTTP server):
+//   dotnet run --project src/ExportDocGen -- import-stock <stocks.xlsx> [--replace]
+if (args is ["import-stock", var stockPath, ..])
+{
+    using var scope = app.Services.CreateScope();
+    var importer = scope.ServiceProvider.GetRequiredService<StockCatalogImportService>();
+    await using var file = File.OpenRead(stockPath);
+    var result = importer.Parse(file);
+    Console.WriteLine(result.Summary());
+    if (args.Contains("--replace"))
+        Console.WriteLine($"\nReplaced the catalogue — {await importer.ReplaceCatalogueAsync(result.Rows)} products.");
+    else
+        Console.WriteLine("\n(dry run — pass --replace to write)");
+    return;
 }
 
 // Configure the HTTP request pipeline.

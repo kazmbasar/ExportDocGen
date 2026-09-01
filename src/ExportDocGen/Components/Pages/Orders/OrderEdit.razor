@@ -95,8 +95,8 @@ else
                 <th style="width:34%">Product</th>
                 <th style="width:12%">Quantity</th>
                 <th style="width:16%">Unit price</th>
-                <th style="width:10%" class="text-right">Cartons</th>
-                <th style="width:14%" class="text-right">Net kg</th>
+                <th style="width:12%" class="text-right">Net kg</th>
+                <th style="width:12%" class="text-right">CBM</th>
                 <th style="width:14%" class="text-right">Line total</th>
                 <th style="width:5%"></th>
             </tr>
@@ -111,13 +111,11 @@ else
                 var calc = LineCalc(line);
                 <tr @key="line">
                     <td>
-                        <MudSelect T="int" Value="line.ProductId" Dense="true"
-                                   ValueChanged="v => OnLineProductChanged(line, v)">
-                            @foreach (var p in _products)
-                            {
-                                <MudSelectItem T="int" Value="p.Id">@p.PartNumber — @p.Description</MudSelectItem>
-                            }
-                        </MudSelect>
+                        <MudAutocomplete T="Product" Value="ProductFor(line.ProductId)"
+                                         ValueChanged="p => OnLineProductChanged(line, p?.Id ?? 0)"
+                                         SearchFunc="SearchProducts" ToStringFunc="ProductLabel"
+                                         Dense="true" Margin="Margin.Dense" MaxItems="50"
+                                         Placeholder="Search code or description" />
                     </td>
                     <td>
                         <MudNumericField T="int" @bind-Value="line.Quantity" Min="1" Margin="Margin.Dense" />
@@ -125,8 +123,8 @@ else
                     <td>
                         <MudNumericField T="decimal" @bind-Value="line.UnitPrice" Min="0" Format="0.00" Margin="Margin.Dense" />
                     </td>
-                    <td class="text-right">@(calc?.Cartons.ToString() ?? "–")</td>
                     <td class="text-right">@(calc?.NetWeightKg.ToString("0.###") ?? "–")</td>
+                    <td class="text-right">@(calc?.VolumeM3.ToString("0.######") ?? "–")</td>
                     <td class="text-right">@(calc?.LineTotal.ToString("N2") ?? "–")</td>
                     <td>
                         <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
@@ -158,12 +156,6 @@ else
         </MudItem>
         <MudItem xs="6" sm="4" md="2">
             <MudPaper Class="pa-3" Elevation="0" Outlined="true">
-                <MudText Typo="Typo.overline">Cartons</MudText>
-                <MudText Typo="Typo.h6">@Calculation.TotalCartons</MudText>
-            </MudPaper>
-        </MudItem>
-        <MudItem xs="6" sm="4" md="2">
-            <MudPaper Class="pa-3" Elevation="0" Outlined="true">
                 <MudText Typo="Typo.overline">Volume (CBM)</MudText>
                 <MudText Typo="Typo.h6">@Calculation.TotalVolumeM3.ToString("0.###")</MudText>
             </MudPaper>
@@ -171,8 +163,8 @@ else
     </MudGrid>
 
     <MudText Typo="Typo.caption" Class="mt-2">
-        Gross weight includes empty-carton weight. Cartons round up to whole
-        cartons per line. Volume is outer-carton CBM.
+        Weights and volume are per-unit figures from the stock catalogue ×
+        quantity. Gross weight is net × 1.05.
     </MudText>
 }
 
@@ -193,6 +185,21 @@ else
 
     private Product? ProductFor(int productId) =>
         _productLookup.TryGetValue(productId, out var p) ? p : null;
+
+    private static string ProductLabel(Product? p) =>
+        p is null ? "" : $"{p.PartNumber} — {p.Description}";
+
+    private Task<IEnumerable<Product>> SearchProducts(string? value, CancellationToken ct)
+    {
+        var q = string.IsNullOrWhiteSpace(value)
+            ? _products.Take(50)
+            : _products.Where(p =>
+                p.PartNumber.Contains(value, StringComparison.OrdinalIgnoreCase)
+                || p.Description.Contains(value, StringComparison.OrdinalIgnoreCase)
+                || (p.Brand?.Contains(value, StringComparison.OrdinalIgnoreCase) ?? false))
+              .Take(50);
+        return Task.FromResult(q);
+    }
 
     private LineCalculation? LineCalc(OrderLine line)
     {
@@ -268,16 +275,7 @@ else
             _order.Validity = seller.DefaultValidity;
     }
 
-    private void AddLine()
-    {
-        var firstProduct = _products.FirstOrDefault();
-        _order.Lines.Add(new OrderLine
-        {
-            ProductId = firstProduct?.Id ?? 0,
-            Quantity = 1,
-            UnitPrice = firstProduct?.DefaultUnitPrice ?? 0m,
-        });
-    }
+    private void AddLine() => _order.Lines.Add(new OrderLine { Quantity = 1 });
 
     private void OnLineProductChanged(OrderLine line, int productId)
     {

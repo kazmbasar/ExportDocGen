@@ -27,7 +27,6 @@ public sealed record PackingListModel
     public required IReadOnlyList<PackingLine> Lines { get; init; }
 
     public required int TotalQuantity { get; init; }
-    public required int TotalCartons { get; init; }
     public required decimal TotalNetWeightKg { get; init; }
     public required decimal TotalGrossWeightKg { get; init; }
     public required decimal TotalVolumeM3 { get; init; }
@@ -57,11 +56,11 @@ public sealed record PackingListModel
                 Code: line.Product!.PartNumber,
                 Description: DocFormat.FilterDescription(line.Product!),
                 HsCode: line.Product!.HsCode,
+                Origin: line.Product!.Origin,
                 Quantity: line.Quantity,
-                Cartons: calc?.Cartons ?? 0,
                 NetWeightKg: calc?.NetWeightKg ?? line.Quantity * line.Product!.NetWeightKg,
                 GrossWeightKg: calc?.ShipGrossWeightKg ?? line.Quantity * line.Product!.GrossWeightKg,
-                VolumeM3: calc?.VolumeM3 ?? 0m));
+                VolumeM3: calc?.VolumeM3 ?? line.Quantity * line.Product!.UnitVolumeM3));
         }
 
         return new PackingListModel
@@ -82,7 +81,6 @@ public sealed record PackingListModel
 
             Lines = lines,
             TotalQuantity = lines.Sum(l => l.Quantity),
-            TotalCartons = calculation.TotalCartons,
             TotalNetWeightKg = calculation.TotalNetWeightKg,
             TotalGrossWeightKg = calculation.TotalGrossWeightKg,
             TotalVolumeM3 = calculation.TotalVolumeM3,
@@ -96,8 +94,8 @@ public sealed record PackingLine(
     string Code,
     string Description,
     string? HsCode,
+    string? Origin,
     int Quantity,
-    int Cartons,
     decimal NetWeightKg,
     decimal GrossWeightKg,
     decimal VolumeM3);

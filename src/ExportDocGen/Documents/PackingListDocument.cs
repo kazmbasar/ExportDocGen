@@ -109,15 +109,15 @@ public sealed class PackingListDocument(PackingListModel model) : IDocument
     {
         table.ColumnsDefinition(c =>
         {
-            c.ConstantColumn(24);      // #
+            c.ConstantColumn(22);      // #
             c.RelativeColumn(1.6f);    // code
-            c.RelativeColumn(2.0f);    // description
-            c.RelativeColumn(1.1f);    // HS code
+            c.RelativeColumn(1.9f);    // description
+            c.RelativeColumn(1.2f);    // HS code
+            c.RelativeColumn(1.0f);    // origin
             c.RelativeColumn(0.9f);    // qty
-            c.RelativeColumn(0.9f);    // cartons
             c.RelativeColumn(1.1f);    // net kg
             c.RelativeColumn(1.1f);    // gross kg
-            c.RelativeColumn(1.0f);    // CBM
+            c.RelativeColumn(1.1f);    // CBM
         });
 
         table.Header(h =>
@@ -126,8 +126,8 @@ public sealed class PackingListDocument(PackingListModel model) : IDocument
             Head(h, "PRODUCT CODE");
             Head(h, "DESCRIPTION");
             Head(h, "HS CODE");
+            Head(h, "ORIGIN");
             Head(h, "QTY");
-            Head(h, "CTNS");
             Head(h, "NET KG");
             Head(h, "GROSS KG");
             Head(h, "CBM");
@@ -139,8 +139,8 @@ public sealed class PackingListDocument(PackingListModel model) : IDocument
             Cell(line.Code, Align.Left);
             Cell(line.Description, Align.Left);
             Cell(line.HsCode ?? "", Align.Left);
+            Cell(line.Origin ?? "", Align.Left);
             Cell(DocFormat.Count(line.Quantity), Align.Right);
-            Cell(DocFormat.Count(line.Cartons), Align.Right);
             Cell(DocFormat.Weight(line.NetWeightKg), Align.Right);
             Cell(DocFormat.Weight(line.GrossWeightKg), Align.Right);
             Cell(DocFormat.Weight(line.VolumeM3), Align.Right);
@@ -149,10 +149,10 @@ public sealed class PackingListDocument(PackingListModel model) : IDocument
         // Totals row across the numeric columns.
         Cell("", Align.Left);
         Cell("", Align.Left);
-        Cell("TOTAL", Align.Right, bold: true);
         Cell("", Align.Left);
+        Cell("", Align.Left);
+        Cell("TOTAL", Align.Right, bold: true);
         Cell(DocFormat.Count(model.TotalQuantity), Align.Right, bold: true);
-        Cell(DocFormat.Count(model.TotalCartons), Align.Right, bold: true);
         Cell(DocFormat.Weight(model.TotalNetWeightKg), Align.Right, bold: true);
         Cell(DocFormat.Weight(model.TotalGrossWeightKg), Align.Right, bold: true);
         Cell(DocFormat.Weight(model.TotalVolumeM3), Align.Right, bold: true);
@@ -176,7 +176,6 @@ public sealed class PackingListDocument(PackingListModel model) : IDocument
     {
         col.Spacing(3);
         Row("TOTAL QUANTITY", $"{DocFormat.Count(model.TotalQuantity)} PCS");
-        Row("TOTAL CARTONS", DocFormat.Count(model.TotalCartons));
         Row("TOTAL NET WEIGHT", $"{DocFormat.Weight(model.TotalNetWeightKg)} KGS");
         Row("TOTAL GROSS WEIGHT", $"{DocFormat.Weight(model.TotalGrossWeightKg)} KGS");
         Row("TOTAL VOLUME", $"{DocFormat.Weight(model.TotalVolumeM3)} CBM");

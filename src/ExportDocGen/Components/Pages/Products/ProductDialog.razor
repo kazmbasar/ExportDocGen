@@ -6,12 +6,18 @@
         <MudForm @ref="_form" Model="Model">
             <MudGrid>
                 <MudItem xs="12" sm="4">
-                    <MudTextField @bind-Value="Model.PartNumber" Label="Part number" Required="true"
-                                  RequiredError="Part number is required" />
+                    <MudTextField @bind-Value="Model.PartNumber" Label="Stock code" Required="true"
+                                  RequiredError="Stock code is required" />
                 </MudItem>
                 <MudItem xs="12" sm="8">
-                    <MudTextField @bind-Value="Model.Description" Label="Description" Required="true"
+                    <MudTextField @bind-Value="Model.Description" Label="Description (CİNSİ)" Required="true"
                                   RequiredError="Description is required" />
+                </MudItem>
+                <MudItem xs="6" sm="4">
+                    <MudTextField @bind-Value="Model.Brand" Label="Brand (MARKA)" />
+                </MudItem>
+                <MudItem xs="6" sm="4">
+                    <MudTextField @bind-Value="Model.Origin" Label="Origin (MENŞEİ)" />
                 </MudItem>
                 <MudItem xs="6" sm="4">
                     <MudSelect @bind-Value="Model.FilterType" Label="Filter type" Clearable="true">
@@ -19,44 +25,29 @@
                         <MudSelectItem Value="@("oil")">oil</MudSelectItem>
                         <MudSelectItem Value="@("fuel")">fuel</MudSelectItem>
                         <MudSelectItem Value="@("cabin")">cabin</MudSelectItem>
+                        <MudSelectItem Value="@("water")">water</MudSelectItem>
                     </MudSelect>
                 </MudItem>
                 <MudItem xs="6" sm="4">
-                    <MudTextField @bind-Value="Model.HsCode" Label="HS code" />
+                    <MudTextField @bind-Value="Model.HsCode" Label="HS code (GTİP)" />
                 </MudItem>
                 <MudItem xs="6" sm="4">
                     <MudCheckBox @bind-Value="Model.IsActive" Label="Active" />
                 </MudItem>
 
-                <MudItem xs="12"><MudText Typo="Typo.subtitle2" Class="mt-2">Weights (per unit, kg)</MudText></MudItem>
+                <MudItem xs="12"><MudText Typo="Typo.subtitle2" Class="mt-2">Per unit</MudText></MudItem>
                 <MudItem xs="6" sm="3">
-                    <MudNumericField @bind-Value="Model.NetWeightKg" Label="Net weight" Min="0" Format="0.###" />
-                </MudItem>
-                <MudItem xs="6" sm="3">
-                    <MudNumericField @bind-Value="Model.GrossWeightKg" Label="Gross weight" Min="0" Format="0.###" />
-                </MudItem>
-
-                <MudItem xs="12"><MudText Typo="Typo.subtitle2" Class="mt-2">Carton</MudText></MudItem>
-                <MudItem xs="6" sm="3">
-                    <MudNumericField @bind-Value="Model.UnitsPerCarton" Label="Units / carton" Min="1" />
+                    <MudNumericField @bind-Value="Model.NetWeightKg" Label="Net weight (kg)" Min="0" Format="0.###" />
                 </MudItem>
                 <MudItem xs="6" sm="3">
-                    <MudNumericField @bind-Value="Model.CartonTareWeightKg" Label="Empty carton kg" Min="0" Format="0.###" />
+                    <MudNumericField @bind-Value="Model.GrossWeightKg" Label="Gross weight (kg)" Min="0" Format="0.###" />
                 </MudItem>
-                <MudItem xs="4" sm="2">
-                    <MudNumericField @bind-Value="Model.CartonLengthCm" Label="Length cm" Min="0" Format="0.#" />
+                <MudItem xs="6" sm="3">
+                    <MudNumericField @bind-Value="Model.UnitVolumeM3" Label="Volume (m³)" Min="0" Format="0.######" />
                 </MudItem>
-                <MudItem xs="4" sm="2">
-                    <MudNumericField @bind-Value="Model.CartonWidthCm" Label="Width cm" Min="0" Format="0.#" />
-                </MudItem>
-                <MudItem xs="4" sm="2">
-                    <MudNumericField @bind-Value="Model.CartonHeightCm" Label="Height cm" Min="0" Format="0.#" />
-                </MudItem>
-
-                <MudItem xs="12"><MudText Typo="Typo.subtitle2" Class="mt-2">Pricing</MudText></MudItem>
                 <MudItem xs="6" sm="3">
                     <MudNumericField @bind-Value="Model.DefaultUnitPrice" Label="Default unit price" Min="0" Format="0.00"
-                                     HelperText="Optional catalog price" />
+                                     HelperText="Optional" />
                 </MudItem>
             </MudGrid>
         </MudForm>

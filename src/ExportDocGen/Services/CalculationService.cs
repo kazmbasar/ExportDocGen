@@ -3,34 +3,27 @@ using ExportDocGen.Data.Entities;
 namespace ExportDocGen.Services;
 
 /// <summary>
-/// Pure calculation of the money, weight, carton and volume figures that appear
-/// on the order screen and on the generated documents. No database access.
-/// Formulas and rounding are documented in <c>docs/DATA-MODEL.md</c>.
+/// Pure calculation of the money, weight and volume figures shown on the order
+/// screen and the generated documents. No database access. Every figure is a
+/// simple per-unit multiplication — the stock catalogue carries per-unit net
+/// weight and per-unit volume (m³); gross weight is net × 1.05 (set on import).
 /// </summary>
 public class CalculationService
 {
     private const int MoneyDecimals = 2;
     private const int WeightDecimals = 3;
-    private const int VolumeDecimals = 3;
+    private const int VolumeDecimals = 6;
 
     public LineCalculation CalculateLine(int quantity, decimal unitPrice, Product product)
     {
-        var unitsPerCarton = product.UnitsPerCarton > 0 ? product.UnitsPerCarton : 1;
-        var cartons = quantity <= 0 ? 0 : (quantity + unitsPerCarton - 1) / unitsPerCarton;
+        var q = quantity <= 0 ? 0 : quantity;
 
-        var lineTotal = Round(quantity * unitPrice, MoneyDecimals);
-        var netWeight = Round(quantity * product.NetWeightKg, WeightDecimals);
-        var cartonTare = cartons * product.CartonTareWeightKg;
-        var shipGross = Round(quantity * product.GrossWeightKg + cartonTare, WeightDecimals);
+        var lineTotal = Round(q * unitPrice, MoneyDecimals);
+        var netWeight = Round(q * product.NetWeightKg, WeightDecimals);
+        var grossWeight = Round(q * product.GrossWeightKg, WeightDecimals);
+        var volume = Round(q * product.UnitVolumeM3, VolumeDecimals);
 
-        var volume = Round(
-            cartons
-            * (product.CartonLengthCm / 100m)
-            * (product.CartonWidthCm / 100m)
-            * (product.CartonHeightCm / 100m),
-            VolumeDecimals);
-
-        return new LineCalculation(quantity, lineTotal, netWeight, shipGross, cartons, volume);
+        return new LineCalculation(q, lineTotal, netWeight, grossWeight, volume);
     }
 
     public OrderCalculation CalculateOrder(
@@ -42,9 +35,8 @@ public class CalculationService
 
         return new OrderCalculation(
             OrderTotal: results.Sum(r => r.LineTotal),
-            TotalNetWeightKg: results.Sum(r => r.NetWeightKg),
-            TotalGrossWeightKg: results.Sum(r => r.ShipGrossWeightKg),
-            TotalCartons: results.Sum(r => r.Cartons),
+            TotalNetWeightKg: Round(results.Sum(r => r.NetWeightKg), WeightDecimals),
+            TotalGrossWeightKg: Round(results.Sum(r => r.ShipGrossWeightKg), WeightDecimals),
             TotalVolumeM3: Round(results.Sum(r => r.VolumeM3), VolumeDecimals),
             Lines: results);
     }
@@ -56,21 +48,18 @@ public class CalculationService
 /// <param name="Quantity">Units on the line.</param>
 /// <param name="LineTotal">quantity × unit price (money).</param>
 /// <param name="NetWeightKg">quantity × product net weight.</param>
-/// <param name="ShipGrossWeightKg">quantity × product gross weight + carton tare.</param>
-/// <param name="Cartons">whole cartons, partial rounded up.</param>
-/// <param name="VolumeM3">carton outer volume in cubic metres (CBM).</param>
+/// <param name="ShipGrossWeightKg">quantity × product gross weight.</param>
+/// <param name="VolumeM3">quantity × product unit volume (CBM).</param>
 public record LineCalculation(
     int Quantity,
     decimal LineTotal,
     decimal NetWeightKg,
     decimal ShipGrossWeightKg,
-    int Cartons,
     decimal VolumeM3);
 
 public record OrderCalculation(
     decimal OrderTotal,
     decimal TotalNetWeightKg,
     decimal TotalGrossWeightKg,
-    int TotalCartons,
     decimal TotalVolumeM3,
     IReadOnlyList<LineCalculation> Lines);

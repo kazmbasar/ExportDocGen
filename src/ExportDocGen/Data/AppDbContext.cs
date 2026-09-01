@@ -53,6 +53,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.Property(p => p.PartNumber).HasMaxLength(100).IsRequired();
             e.Property(p => p.Description).HasMaxLength(400).IsRequired();
+            e.Property(p => p.Origin).HasMaxLength(80);
+            e.Property(p => p.Brand).HasMaxLength(80);
+            e.Property(p => p.HsCode).HasMaxLength(40);
+            e.Property(p => p.FilterType).HasMaxLength(20);
             e.HasIndex(p => p.PartNumber).IsUnique();
         });
 

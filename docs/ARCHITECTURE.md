@@ -41,8 +41,9 @@ src/ExportDocGen/
 │   ├── SellerCompanyService.cs   # ✅ M6.5 — read-only list/get of the seeded companies
 │   ├── OrderService.cs           # ✅ M3 — list/get/create/update/delete + line reconcile
 │   ├── OrderNumberGenerator.cs   # ✅ M6.5 — per-company sequence, format per SellerNumberFormat
-│   ├── CalculationService.cs     # ✅ M4 — pure; line + order money/weight/carton/CBM
+│   ├── CalculationService.cs     # ✅ M4 — pure; per-unit money / net / gross / CBM × quantity
 │   ├── ExcelOrderImportParser.cs # ✅ M5 — pure; reads a customer .xlsx into line rows
+│   ├── StockCatalogImportService.cs # ✅ loads the stock DB (.xlsx) → product catalogue
 │   └── OrderDocumentService.cs   # ✅ M6 — loads order + calc + seller → picks template → proforma / packing list bytes
 ├── Documents/                    # QuestPDF IDocument classes
 │   ├── DocFormat.cs              # ✅ M7 — shared date / weight / money / address / description formatting
@@ -68,10 +69,12 @@ src/ExportDocGen/
 `tests/ExportDocGen.Tests/` — xUnit. `SqliteTestFactory` gives each test an
 isolated in-memory SQLite database (connection kept open) behind
 `IDbContextFactory<AppDbContext>`, so FK/cascade/unique-index behaviour is real.
-Current coverage (28 tests): `OrderService` round-trip + line reconciliation,
-order-number sequencing, delete guards, `CalculationService` line/order
-formulas, carton rounding, money rounding, the proforma model/document/service
-(mapping, `%PDF` output, saved-order round-trip), and `ExcelOrderImportParser`
+Current coverage (36 tests): `OrderService` round-trip + line reconciliation,
+per-company order-number sequencing, delete guards, `CalculationService`
+per-unit formulas, money rounding, the proforma & packing-list
+model/document/service (mapping, template selection, `%PDF` output, saved-order
+round-trip), `StockCatalogImportService` (filter-only, dedupe, Turkish decimals,
+gross uplift, in-use refusal), and `ExcelOrderImportParser`
 against the two real FILTORQ sample workbooks (row count, totals-row cut-off, code
 normalization, bad-cell flagging, header detection below a title row).
 
@@ -147,6 +150,24 @@ MVP. Local run is `dotnet run` or a published self-contained binary.
 See `docs/PLANNING.md` → "Excel order import (M5) — as built" for the confirmed
 spreadsheet layout and scope boundaries.
 
+## Stock catalogue import — done
+
+- **`Services/StockCatalogImportService.cs`** — reads the company stock database
+  (an `.xlsx` export of `stocks.ods`) with ClosedXML. `Parse(Stream)` locates the
+  header by name (accent-folded: `Description / MENŞEİ / MARKA / CİNSİ / GTIP /
+  Net weight / m3`), keeps only rows whose type contains "FILTER", dedupes by
+  code, and returns `StockRow`s plus a skip / zero-value summary.
+  `ReplaceCatalogueAsync` wipes `Products` (refusing if any is on an order line)
+  and batch-inserts, with `GrossWeightKg = NetWeightKg × 1.05`.
+- **Run it:** `dotnet run --project src/ExportDocGen -- import-stock
+  <stocks.xlsx> [--replace]` (a branch at the top of `Program.cs`, before the
+  HTTP server starts). Dry run without `--replace`. No browser page yet.
+- **`Product`** has no carton fields — `Origin`, `Brand`, `UnitVolumeM3` instead;
+  `CalculationService` is pure per-unit arithmetic. The order builder and the
+  Excel-import review use `MudAutocomplete` for the ~16k-row catalogue.
+
+See `docs/DECISIONS.md` (2026-09-01, stock catalogue import).
+
 ## Proforma invoice (M6 / M6.5) — done
 
 - **`Documents/ProformaInvoiceModel.cs`** — flat, print-ready record;
@@ -184,14 +205,14 @@ spreadsheet layout and scope boundaries.
 - **`Documents/PackingListModel.cs`** — `From(order, calculation, seller,
   letterhead?)`, mirrors `ProformaInvoiceModel`. Lines
   (`PackingLine`) and totals come straight from the `CalculationService`
-  `OrderCalculation` (net weight, ship gross weight, cartons, CBM).
+  `OrderCalculation` (net weight, gross weight, CBM).
 - **`Documents/PackingListDocument.cs`** — **one** shared A4-portrait layout for
   both companies; the seller's letterhead is swapped in (Filtorq full-page
   background + wide margins; İkiler header-band image + text footer; else a text
   header). Centered "PACKING LIST", a buyer / reference block
   (`PROFORMA NO/DATE`, `INVOICE NO/DATE` — both the order number/date for now,
   `INCOTERMS`, country of origin), the bordered line table
-  (`# · code · description · HS code · qty · ctns · net kg · gross kg · CBM`) and
-  the shipment totals.
+  (`# · code · description · HS code · origin · qty · net kg · gross kg · CBM`)
+  and the shipment totals.
 - **v1** — to be tightened against a real issued packing list (M7b). See
   `docs/DECISIONS.md` (2026-09-01, M7).
