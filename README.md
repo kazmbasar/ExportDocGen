@@ -7,16 +7,17 @@ Excel/Word copy-paste.
 ## Status
 
 **M6.5 (Multi-seller rebuild) complete.** Started 2026-08-31. Solution builds,
-runs, and has 32 passing tests. SQLite database, EF Core migrations, seed data,
+runs, and has 33 passing tests. SQLite database, EF Core migrations, seed data,
 the MudBlazor UI shell, Customer/Product CRUD, the order builder, live
 calculations, Excel order import, and a **proforma invoice PDF** per order.
 
 The group's **two exporting companies** (Filtorq, İkiler Otomotiv) are modelled
-as `SellerCompany` rows. You pick the seller when creating an order; the proforma
-renders from that company's own template (`GET /orders/{id}/proforma.pdf`), each
-company keeps its own order-number sequence, the customer's payment type and a
-free-text bank block flow onto the document. Next: M7 — packing list PDF + order
-list/search. See [`docs/PLANNING.md`](docs/PLANNING.md).
+as `SellerCompany` rows. Each **customer** is assigned an exporter company; every
+order for that customer is issued by it — the proforma renders from that
+company's own template (`GET /orders/{id}/proforma.pdf`), each company keeps its
+own order-number sequence, and the customer's payment type + a free-text bank
+block flow onto the document. Next: M7 — packing list PDF + order list/search.
+See [`docs/PLANNING.md`](docs/PLANNING.md).
 
 Seller company details (names, bank text, letterhead paths) are seeded in
 `src/ExportDocGen/Data/SeedData.cs` — there is no editing screen yet. Swap

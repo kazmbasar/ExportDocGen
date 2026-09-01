@@ -5,7 +5,7 @@ namespace ExportDocGen.Tests;
 
 public class OrderServiceTests
 {
-    private static async Task<(SqliteTestFactory factory, int customerId, int sellerId, int productId, int product2Id)> SeedAsync()
+    private static async Task<(SqliteTestFactory factory, int customerId, int productId, int product2Id)> SeedAsync()
     {
         var factory = new SqliteTestFactory();
         var seller = await TestData.SeedSellerAsync(factory);
@@ -13,15 +13,15 @@ public class OrderServiceTests
 
         var customer = new Customer
         {
-            Name = "Test Buyer", AddressLine1 = "1 Road", Country = "Germany",
-            DefaultIncoterm = "CIF Hamburg", DefaultCurrency = "EUR",
+            Name = "Test Buyer", SellerCompanyId = seller.Id, AddressLine1 = "1 Road",
+            Country = "Germany", DefaultIncoterm = "CIF Hamburg", DefaultCurrency = "EUR",
         };
         var p1 = new Product { PartNumber = "P-1", Description = "Filter 1", UnitsPerCarton = 10, DefaultUnitPrice = 5m };
         var p2 = new Product { PartNumber = "P-2", Description = "Filter 2", UnitsPerCarton = 20, DefaultUnitPrice = 3m };
         db.AddRange(customer, p1, p2);
         await db.SaveChangesAsync();
 
-        return (factory, customer.Id, seller.Id, p1.Id, p2.Id);
+        return (factory, customer.Id, p1.Id, p2.Id);
     }
 
     private static OrderService NewService(SqliteTestFactory factory) =>
@@ -30,14 +30,13 @@ public class OrderServiceTests
     [Fact]
     public async Task Create_then_get_round_trips_lines()
     {
-        var (factory, customerId, sellerId, productId, product2Id) = await SeedAsync();
+        var (factory, customerId, productId, product2Id) = await SeedAsync();
         using var _ = factory;
         var service = NewService(factory);
 
         var order = new Order
         {
             CustomerId = customerId,
-            SellerCompanyId = sellerId,
             OrderDate = new DateOnly(2026, 5, 1),
             Currency = "EUR",
             Incoterm = "CIF Hamburg",
@@ -60,15 +59,29 @@ public class OrderServiceTests
     }
 
     [Fact]
-    public async Task Order_numbers_increment_within_a_year()
+    public async Task Create_takes_the_seller_from_the_customer()
     {
-        var (factory, customerId, sellerId, productId, _) = await SeedAsync();
+        var (factory, customerId, productId, _) = await SeedAsync();
         using var _ = factory;
         var service = NewService(factory);
 
-        var first = await service.CreateAsync(NewOrder(customerId, sellerId, productId, 2026));
-        var second = await service.CreateAsync(NewOrder(customerId, sellerId, productId, 2026));
-        var otherYear = await service.CreateAsync(NewOrder(customerId, sellerId, productId, 2027));
+        var id = await service.CreateAsync(NewOrder(customerId, productId, 2026));
+        var loaded = await service.GetAsync(id);
+
+        var customerSeller = (await new CustomerService(factory).GetAsync(customerId))!.SellerCompanyId;
+        Assert.Equal(customerSeller, loaded!.SellerCompanyId);
+    }
+
+    [Fact]
+    public async Task Order_numbers_increment_within_a_year()
+    {
+        var (factory, customerId, productId, _) = await SeedAsync();
+        using var _ = factory;
+        var service = NewService(factory);
+
+        var first = await service.CreateAsync(NewOrder(customerId, productId, 2026));
+        var second = await service.CreateAsync(NewOrder(customerId, productId, 2026));
+        var otherYear = await service.CreateAsync(NewOrder(customerId, productId, 2027));
 
         Assert.Equal("EXP-2026-0001", (await service.GetAsync(first))!.OrderNumber);
         Assert.Equal("EXP-2026-0002", (await service.GetAsync(second))!.OrderNumber);
@@ -78,16 +91,17 @@ public class OrderServiceTests
     [Fact]
     public async Task Seller_companies_have_independent_sequences_and_formats()
     {
-        var (factory, customerId, filtorqId, productId, _) = await SeedAsync();
+        var (factory, filtorqCustomerId, productId, _) = await SeedAsync();
         using var _ = factory;
         var ikiler = await TestData.SeedSellerAsync(
             factory, "İkiler", ProformaTemplate.IkilerGrid, SellerNumberFormat.DateSlashSeq);
+        var ikilerCustomerId = await TestData.SeedCustomerAsync(factory, ikiler.Id, "İkiler Buyer");
         var service = NewService(factory);
 
-        var f1 = await service.CreateAsync(NewOrder(customerId, filtorqId, productId, 2026));
-        var i1 = await service.CreateAsync(NewOrder(customerId, ikiler.Id, productId, 2026));
-        var i2 = await service.CreateAsync(NewOrder(customerId, ikiler.Id, productId, 2026));
-        var f2 = await service.CreateAsync(NewOrder(customerId, filtorqId, productId, 2026));
+        var f1 = await service.CreateAsync(NewOrder(filtorqCustomerId, productId, 2026));
+        var i1 = await service.CreateAsync(NewOrder(ikilerCustomerId, productId, 2026));
+        var i2 = await service.CreateAsync(NewOrder(ikilerCustomerId, productId, 2026));
+        var f2 = await service.CreateAsync(NewOrder(filtorqCustomerId, productId, 2026));
 
         Assert.Equal("EXP-2026-0001", (await service.GetAsync(f1))!.OrderNumber);
         Assert.Equal("EXP-2026-0002", (await service.GetAsync(f2))!.OrderNumber);
@@ -98,13 +112,13 @@ public class OrderServiceTests
     [Fact]
     public async Task Update_adds_removes_and_edits_lines()
     {
-        var (factory, customerId, sellerId, productId, product2Id) = await SeedAsync();
+        var (factory, customerId, productId, product2Id) = await SeedAsync();
         using var _ = factory;
         var service = NewService(factory);
 
         var id = await service.CreateAsync(new Order
         {
-            CustomerId = customerId, SellerCompanyId = sellerId, Currency = "EUR",
+            CustomerId = customerId, Currency = "EUR",
             OrderDate = new DateOnly(2026, 1, 1),
             Lines = { new OrderLine { ProductId = productId, Quantity = 10, UnitPrice = 5m } },
         });
@@ -132,11 +146,11 @@ public class OrderServiceTests
     [Fact]
     public async Task Delete_removes_order_and_its_lines()
     {
-        var (factory, customerId, sellerId, productId, _) = await SeedAsync();
+        var (factory, customerId, productId, _) = await SeedAsync();
         using var _ = factory;
         var service = NewService(factory);
 
-        var id = await service.CreateAsync(NewOrder(customerId, sellerId, productId, 2026));
+        var id = await service.CreateAsync(NewOrder(customerId, productId, 2026));
         await service.DeleteAsync(id);
 
         Assert.Null(await service.GetAsync(id));
@@ -144,10 +158,9 @@ public class OrderServiceTests
         Assert.Empty(db.OrderLines);
     }
 
-    private static Order NewOrder(int customerId, int sellerId, int productId, int year) => new()
+    private static Order NewOrder(int customerId, int productId, int year) => new()
     {
         CustomerId = customerId,
-        SellerCompanyId = sellerId,
         Currency = "EUR",
         OrderDate = new DateOnly(year, 6, 15),
         Lines = { new OrderLine { ProductId = productId, Quantity = 10, UnitPrice = 5m } },

@@ -7,6 +7,12 @@ public class Customer
 
     public string Name { get; set; } = "";
 
+    /// <summary>Which group company exports to this customer. Every order for the
+    /// customer is issued by this company (its proforma template, letterhead and
+    /// number sequence).</summary>
+    public int SellerCompanyId { get; set; }
+    public SellerCompany? SellerCompany { get; set; }
+
     /// <summary>Buyer tax / company registration number, shown next to the name
     /// on the proforma invoice (e.g. "412745187").</summary>
     public string? TaxId { get; set; }

@@ -42,8 +42,13 @@ public class OrderService(
     {
         await using var db = await dbFactory.CreateDbContextAsync();
 
+        // The seller company always follows the customer's exporter company.
+        var customer = await db.Customers.FirstOrDefaultAsync(c => c.Id == order.CustomerId)
+            ?? throw new InvalidOperationException("Choose a customer for the order.");
+        order.SellerCompanyId = customer.SellerCompanyId;
+
         var seller = await db.SellerCompanies.FirstOrDefaultAsync(s => s.Id == order.SellerCompanyId)
-            ?? throw new InvalidOperationException("Choose a seller company for the order.");
+            ?? throw new InvalidOperationException("The customer has no exporter company set.");
 
         order.OrderNumber = await numberGenerator.NextAsync(seller, order.OrderDate);
         order.CreatedUtc = DateTime.UtcNow;
@@ -65,8 +70,13 @@ public class OrderService(
             .FirstOrDefaultAsync(o => o.Id == order.Id)
             ?? throw new InvalidOperationException($"Order {order.Id} not found.");
 
+        var customer = await db.Customers.FirstOrDefaultAsync(c => c.Id == order.CustomerId)
+            ?? throw new InvalidOperationException("Choose a customer for the order.");
+
         existing.CustomerId = order.CustomerId;
-        existing.SellerCompanyId = order.SellerCompanyId;
+        // Seller follows the customer's exporter company (the order number keeps
+        // its original format).
+        existing.SellerCompanyId = customer.SellerCompanyId;
         existing.OrderDate = order.OrderDate;
         existing.Incoterm = order.Incoterm;
         existing.Currency = order.Currency;

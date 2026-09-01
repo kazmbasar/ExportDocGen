@@ -16,9 +16,14 @@ with its own proforma template. Kazim provided İkiler's real proforma
   rows (Filtorq = 1, İkiler = 2); the `AddMultiSeller` migration inserts them so
   existing orders back-fill to Filtorq behind the new required FK. No CRUD UI
   yet — they are edited in `SeedData` / by hand.
-- **Seller is chosen per order** (`Order.SellerCompanyId`, required picker on the
-  order builder and the Excel-import review screen). Customers are **shared** —
-  not scoped per company.
+- **The exporter company belongs to the customer** (`Customer.SellerCompanyId`,
+  required "Exporter company" field on the customer form). Every order for that
+  customer is issued by that company — `OrderService` copies
+  `Customer.SellerCompanyId` onto the order at create time (and re-syncs on
+  update), so there is **no seller picker on the order** — the order and import
+  screens just show it read-only. (Revised from the first cut, which had a
+  per-order picker and shared customers; Kazim's two companies keep separate
+  customer books.)
 - **Independent order-number sequence per company.** `OrderNumberGenerator` takes
   the seller: `EXP-{year}-{seq:0000}` for Filtorq (`ExpYearSeq`),
   `{yyMMdd}/{seq}` for İkiler (`DateSlashSeq`). The `OrderNumber` is shown

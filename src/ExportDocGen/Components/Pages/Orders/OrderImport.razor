@@ -41,15 +41,6 @@ else
 {
     <MudGrid>
         <MudItem xs="12" sm="6" md="3">
-            <MudSelect T="int" Label="Seller company" Value="_sellerCompanyId"
-                       ValueChanged="OnSellerChanged" Required="true">
-                @foreach (var s in _sellers)
-                {
-                    <MudSelectItem T="int" Value="s.Id">@s.ShortName</MudSelectItem>
-                }
-            </MudSelect>
-        </MudItem>
-        <MudItem xs="12" sm="6" md="3">
             <MudSelect T="int" Label="Customer" Value="_customerId"
                        ValueChanged="OnCustomerChanged" Required="true">
                 @foreach (var c in _customers)
@@ -57,6 +48,11 @@ else
                     <MudSelectItem T="int" Value="c.Id">@c.Name (@c.Country)</MudSelectItem>
                 }
             </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudField Label="Exporter company" Variant="Variant.Text" Disabled="true">
+                @(_sellers.FirstOrDefault(s => s.Id == _sellerCompanyId)?.ShortName ?? "— pick a customer —")
+            </MudField>
         </MudItem>
         <MudItem xs="6" sm="3" md="2">
             <MudDatePicker Label="Order date" Date="_orderDate" DateChanged="d => _orderDate = d" />
@@ -261,11 +257,7 @@ else
         _sellers = await SellerCompanyService.GetAllAsync();
         _products = await ProductService.GetAllAsync(includeInactive: false);
         _productLookup = _products.ToDictionary(p => p.Id);
-        if (_sellerCompanyId == 0 && _sellers.Count > 0)
-            _sellerCompanyId = _sellers[0].Id;
     }
-
-    private void OnSellerChanged(int sellerId) => _sellerCompanyId = sellerId;
 
     private void BuildLines()
     {
@@ -319,8 +311,11 @@ else
     {
         _customerId = customerId;
         var customer = _customers.FirstOrDefault(c => c.Id == customerId);
-        if (customer is not null && !string.IsNullOrWhiteSpace(customer.DefaultCurrency))
+        if (customer is null) return;
+
+        if (!string.IsNullOrWhiteSpace(customer.DefaultCurrency))
             _currency = customer.DefaultCurrency;
+        _sellerCompanyId = customer.SellerCompanyId;   // exporter follows the customer
     }
 
     private void Reset()
@@ -329,17 +324,13 @@ else
         _sheet = null;
         _lines.Clear();
         _customerId = 0;
+        _sellerCompanyId = 0;
         _fileName = "";
         _uploadError = null;
     }
 
     private async Task Create()
     {
-        if (_sellerCompanyId == 0)
-        {
-            Snackbar.Add("Choose a seller company.", Severity.Error);
-            return;
-        }
         if (_customerId == 0)
         {
             Snackbar.Add("Choose a customer.", Severity.Error);
@@ -358,11 +349,11 @@ else
         }
 
         var customer = _customers.First(c => c.Id == _customerId);
-        var seller = _sellers.First(s => s.Id == _sellerCompanyId);
+        var seller = _sellers.First(s => s.Id == customer.SellerCompanyId);
         var order = new Order
         {
             CustomerId = _customerId,
-            SellerCompanyId = _sellerCompanyId,
+            SellerCompanyId = customer.SellerCompanyId,
             OrderDate = DateOnly.FromDateTime(_orderDate ?? DateTime.Today),
             Currency = _currency.Trim().ToUpperInvariant(),
             Incoterm = customer.DefaultIncoterm ?? "",

@@ -15,7 +15,8 @@ public class CatalogServiceTests
 
         var customer = await customers.CreateAsync(new Customer
         {
-            Name = "Buyer", AddressLine1 = "x", Country = "DE", DefaultCurrency = "EUR",
+            Name = "Buyer", SellerCompanyId = seller.Id, AddressLine1 = "x",
+            Country = "DE", DefaultCurrency = "EUR",
         });
         Product product;
         await using (var db = factory.CreateDbContext())
@@ -46,7 +47,8 @@ public class CatalogServiceTests
 
         var customer = await customers.CreateAsync(new Customer
         {
-            Name = "Buyer", AddressLine1 = "x", Country = "DE", DefaultCurrency = "EUR",
+            Name = "Buyer", SellerCompanyId = seller.Id, AddressLine1 = "x",
+            Country = "DE", DefaultCurrency = "EUR",
         });
         var product = await products.CreateAsync(new Product
         {

@@ -91,10 +91,13 @@ normalization, bad-cell flagging, header detection below a title row).
 - **Money & measures:** `decimal` everywhere; never `double`. Configure SQLite
   decimal precision in entity configurations.
 - **Computed values are never persisted** — always via `CalculationService`.
-- **Seller companies** live in the `SellerCompany` table (seeded, no CRUD UI),
-  chosen per order. Each carries its `ProformaTemplate`, `NumberFormat`,
-  `LetterheadPath` and default bank / delivery / validity text. Replaced the
-  former `CompanyProfile` config (retired in M6.5).
+- **Seller companies** live in the `SellerCompany` table (seeded, no CRUD UI).
+  Each carries its `ProformaTemplate`, `NumberFormat`, `LetterheadPath` and
+  default bank / delivery / validity text. Replaced the former `CompanyProfile`
+  config (retired in M6.5). **The exporter company is a property of the
+  customer** (`Customer.SellerCompanyId`); `OrderService.CreateAsync` copies it
+  onto the order, so the whole order/proforma pipeline follows the customer's
+  company with no per-order choice.
 - **Proforma letterhead:** `SellerCompany.LetterheadPath` — a full-page A4
   background for Filtorq (`wwwroot/proforma-letterhead.png`), a top header band
   for İkiler (`wwwroot/ikiler-letterhead.png`). `OrderDocumentService` resolves

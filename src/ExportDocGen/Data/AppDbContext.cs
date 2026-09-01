@@ -30,6 +30,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(c => c.TaxId).HasMaxLength(50);
             e.Property(c => c.ContactPhone).HasMaxLength(50);
             e.Property(c => c.PaymentType).HasConversion<string>().HasMaxLength(40);
+
+            e.HasOne(c => c.SellerCompany)
+                .WithMany()
+                .HasForeignKey(c => c.SellerCompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         model.Entity<SellerCompany>(e =>

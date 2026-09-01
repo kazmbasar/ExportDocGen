@@ -1,15 +1,26 @@
 @inject CustomerService CustomerService
+@inject SellerCompanyService SellerCompanyService
 @inject ISnackbar Snackbar
 
 <MudDialog>
     <DialogContent>
         <MudForm @ref="_form" Model="Model">
             <MudGrid>
-                <MudItem xs="8">
+                <MudItem xs="12" sm="5">
                     <MudTextField @bind-Value="Model.Name" Label="Company name" Required="true"
                                   RequiredError="Name is required" />
                 </MudItem>
-                <MudItem xs="4">
+                <MudItem xs="7" sm="4">
+                    <MudSelect T="int" @bind-Value="Model.SellerCompanyId" Label="Exporter company"
+                               Required="true" RequiredError="Choose which company exports to this customer"
+                               HelperText="Every order for this customer is issued by this company">
+                        @foreach (var s in _sellers)
+                        {
+                            <MudSelectItem T="int" Value="s.Id">@s.ShortName</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="5" sm="3">
                     <MudTextField @bind-Value="Model.TaxId" Label="Tax / reg. no."
                                   HelperText="Shown on the proforma" />
                 </MudItem>
@@ -78,6 +89,14 @@
 
     private MudForm _form = default!;
     private bool _saving;
+    private List<SellerCompany> _sellers = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _sellers = await SellerCompanyService.GetAllAsync();
+        if (IsNew && Model.SellerCompanyId == 0 && _sellers.Count > 0)
+            Model.SellerCompanyId = _sellers[0].Id;
+    }
 
     private static string? ValidateCurrency(string value) =>
         string.IsNullOrWhiteSpace(value) || value.Trim().Length is 3 and <= 3

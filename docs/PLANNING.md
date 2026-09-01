@@ -91,8 +91,11 @@ output.
         replaces the `CompanyProfile` config. Two seeded rows; the
         `AddMultiSeller` migration inserts them and back-fills existing orders to
         Filtorq. No CRUD UI.
-      - **`Order.SellerCompanyId`** + a required "Seller company" picker on the
-        order builder and the Excel-import review screen. Customers are shared.
+      - **The exporter company belongs to the customer**
+        (`Customer.SellerCompanyId`, required "Exporter company" field on the
+        customer form). `Order.SellerCompanyId` is copied from the customer at
+        create time; the order / import screens show it read-only. Each company
+        keeps its own customer book.
       - **Independent order-number sequence per company** (`OrderNumberGenerator`
         takes the seller): `EXP-{year}-{seq}` for Filtorq, `{yyMMdd}/{seq}` for
         İkiler.
@@ -107,7 +110,7 @@ output.
       - **`Order.BankDetails`** — free-text multi-line block, pre-filled from the
         seller default, printed verbatim. Plus optional `Order.DeliveryTime` /
         `Order.Validity`. Replaces the structured `CompanyProfile.Bank`.
-      - 32 tests. See `docs/DECISIONS.md` (2026-09-01).
+      - 33 tests. See `docs/DECISIONS.md` (2026-09-01).
 - [ ] **M7 — Packing list PDF + order list.** Packing list PDF (weights, cartons,
       dimensions, volume). Order list/search screen. Regenerate PDFs from a
       saved order.

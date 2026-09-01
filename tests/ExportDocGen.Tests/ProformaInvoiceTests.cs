@@ -152,7 +152,8 @@ public class ProformaInvoiceTests
 
         var customer = await customers.CreateAsync(new Customer
         {
-            Name = "Buyer", AddressLine1 = "x", Country = "Lebanon", DefaultCurrency = "USD",
+            Name = "Buyer", SellerCompanyId = ikiler.Id, AddressLine1 = "x",
+            Country = "Lebanon", DefaultCurrency = "USD",
         });
         Product product;
         await using (var db = factory.CreateDbContext())
@@ -186,8 +187,9 @@ public class ProformaInvoiceTests
 
         var customer = await customers.CreateAsync(new Customer
         {
-            Name = "Muster GmbH", TaxId = "DE123", AddressLine1 = "Industriestr. 1",
-            City = "Hamburg", Country = "Germany", DefaultCurrency = "EUR",
+            Name = "Muster GmbH", SellerCompanyId = seller.Id, TaxId = "DE123",
+            AddressLine1 = "Industriestr. 1", City = "Hamburg", Country = "Germany",
+            DefaultCurrency = "EUR",
         });
         Product product;
         await using (var db = factory.CreateDbContext())

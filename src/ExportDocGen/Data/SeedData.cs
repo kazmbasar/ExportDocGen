@@ -13,10 +13,14 @@ public static class SeedData
         if (await db.Products.AnyAsync() || await db.Customers.AnyAsync())
             return;
 
+        var filtorq = await db.SellerCompanies.FirstAsync(s => s.ShortName == "Filtorq");
+        var ikiler = await db.SellerCompanies.FirstAsync(s => s.ShortName == "İkiler");
+
         db.Customers.AddRange(
             new Customer
             {
                 Name = "Muster Kfz-Teile GmbH",
+                SellerCompanyId = filtorq.Id,
                 TaxId = "DE811234567",
                 AddressLine1 = "Industriestrasse 12",
                 City = "Hamburg",
@@ -32,6 +36,7 @@ public static class SeedData
             new Customer
             {
                 Name = "Gulf Auto Spare Parts LLC",
+                SellerCompanyId = ikiler.Id,
                 TaxId = "100234567800003",
                 AddressLine1 = "Deira, Al Maktoum Road",
                 City = "Dubai",

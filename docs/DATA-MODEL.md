@@ -13,6 +13,7 @@ and dimensions as `decimal`. Times stored as UTC.
 |-------|------|-------|
 | Id | int | PK, identity |
 | Name | string | required |
+| SellerCompanyId | int | FK → SellerCompany (restrict) — **the group company that exports to this customer**; every order inherits it |
 | TaxId | string? | buyer tax / registration no. — shown on the proforma |
 | AddressLine1 | string | required |
 | AddressLine2 | string? | |
@@ -75,7 +76,7 @@ Replaces the former `CompanyProfile` config.
 | Id | int | PK, identity |
 | OrderNumber | string | required, unique — format per the seller's `NumberFormat`; independent sequence per company |
 | CustomerId | int | FK → Customer (restrict delete) |
-| SellerCompanyId | int | FK → SellerCompany (restrict delete) — the issuing company |
+| SellerCompanyId | int | FK → SellerCompany (restrict delete) — copied from `Customer.SellerCompanyId` at create time, then fixed for the order's life |
 | OrderDate | DateOnly | |
 | Incoterm | string | copied from customer default, editable |
 | Currency | string | copied from customer default, editable |
@@ -105,8 +106,8 @@ issued, snapshot these onto `OrderLine` later — deferred for MVP, noted in
 ## Relationships
 
 ```
-SellerCompany 1 ──< Order >── 1 Customer
-                     Order 1 ──< OrderLine >── 1 Product
+SellerCompany 1 ──< Customer 1 ──< Order 1 ──< OrderLine >── 1 Product
+                                   Order >── 1 SellerCompany   (copied from the customer)
 ```
 
 - `Order.Lines` — collection, cascade delete.
