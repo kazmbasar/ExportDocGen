@@ -1,0 +1,39 @@
+@page "/login"
+@layout LoginLayout
+@attribute [AllowAnonymous]
+
+<PageTitle>Sign in · ExportDocGen</PageTitle>
+
+<div class="login-page">
+    <form class="login-card" method="post" action="/auth/login">
+        <AntiforgeryToken />
+        <input type="hidden" name="returnUrl" value="@ReturnUrl" />
+
+        <div class="login-brand">
+            <span class="app-brand__mark">E</span>
+            <span class="login-brand__name">ExportDocGen</span>
+        </div>
+        <p class="login-sub">Export document generator — sign in to continue.</p>
+
+        <label class="login-label" for="login-password">Password</label>
+        <input class="login-input" id="login-password" name="password" type="password"
+               autocomplete="current-password" autofocus required />
+
+        @if (ShowError)
+        {
+            <p class="login-error" role="alert">That password didn't work. Try again.</p>
+        }
+
+        <button class="login-btn" type="submit">Sign in</button>
+    </form>
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
+
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? Error { get; set; }
+
+    private bool ShowError => !string.IsNullOrEmpty(Error);
+}

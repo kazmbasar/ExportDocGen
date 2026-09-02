@@ -1,0 +1,16 @@
+**/bin
+**/obj
+**/publish
+**/.vs
+**/.idea
+**/.git
+tests/
+docs/
+Progress/
+*.md
+.env
+*.db
+*.db-shm
+*.db-wal
+**/appsettings.Development.json
+**/appsettings.Local.json

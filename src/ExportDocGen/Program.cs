@@ -1,9 +1,48 @@
+using System.Security.Claims;
+using ExportDocGen.Auth;
 using ExportDocGen.Components;
 using ExportDocGen.Data;
 using ExportDocGen.Services;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
 using QuestPDF.Infrastructure;
+
+// One-off password hashing helper — no host, no DB:
+//   dotnet run --project src/ExportDocGen -- hash-password [plaintext]
+if (args is ["hash-password", ..])
+{
+    var plain = args.Length > 1 ? args[1] : ReadHidden("New password: ");
+    if (string.IsNullOrEmpty(plain))
+    {
+        Console.Error.WriteLine("No password given.");
+        return;
+    }
+    Console.WriteLine();
+    Console.WriteLine("Set this as the Auth__PasswordHash environment variable on the server:");
+    Console.WriteLine();
+    Console.WriteLine(PasswordHash.Create(plain));
+    return;
+
+    static string ReadHidden(string prompt)
+    {
+        Console.Write(prompt);
+        var buffer = new System.Text.StringBuilder();
+        while (true)
+        {
+            var key = Console.ReadKey(intercept: true);
+            if (key.Key == ConsoleKey.Enter) break;
+            if (key.Key == ConsoleKey.Backspace && buffer.Length > 0) buffer.Length--;
+            else if (!char.IsControl(key.KeyChar)) buffer.Append(key.KeyChar);
+        }
+        return buffer.ToString();
+    }
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,15 +52,57 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddMudServices();
 
-// SQLite database, stored in the OS local-app-data folder (outside the source tree).
-var dataDir = Path.Combine(
-    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-    "ExportDocGen");
+// Data lives outside the source tree: the OS local-app-data folder for local runs,
+// or the DataDir setting (a mounted volume) in the container.
+var dataDir = builder.Configuration["DataDir"]
+    ?? Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "ExportDocGen");
 Directory.CreateDirectory(dataDir);
 var dbPath = Path.Combine(dataDir, "exportdocgen.db");
 
 builder.Services.AddDbContextFactory<AppDbContext>(options =>
     options.UseSqlite($"Data Source={dbPath}"));
+
+// Persist Data Protection keys so auth cookies survive a restart / redeploy.
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(dataDir, "keys")))
+    .SetApplicationName("ExportDocGen");
+
+// Single shared login (cookie auth). Credential comes from the Auth section.
+builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection(AuthOptions.SectionName));
+builder.Services.AddSingleton<PasswordAuthenticator>();
+
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.Cookie.Name = "ExportDocGen.Auth";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.LoginPath = "/login";
+        options.LogoutPath = "/auth/logout";
+        options.AccessDeniedPath = "/login";
+        options.ExpireTimeSpan = TimeSpan.FromDays(14);
+        options.SlidingExpiration = true;
+        options.ReturnUrlParameter = "returnUrl";
+    });
+
+builder.Services.AddAuthorization(options =>
+{
+    // Everything that doesn't opt out (the document endpoints, above all) needs a login.
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+});
+builder.Services.AddCascadingAuthenticationState();
+
+// Behind Caddy (TLS terminator) in production — trust its forwarded headers.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 builder.Services.AddScoped<CustomerService>();
 builder.Services.AddScoped<ProductService>();
@@ -64,22 +145,66 @@ if (args is ["import-stock", var stockPath, ..])
 }
 
 // Configure the HTTP request pipeline.
+app.UseForwardedHeaders();
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
-app.UseHttpsRedirection();
 
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseAntiforgery();
 
-app.MapStaticAssets();
+app.MapStaticAssets().AllowAnonymous();
 app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+    .AddInteractiveServerRenderMode()
+    .AllowAnonymous(); // page-level gate is [Authorize] in _Imports + AuthorizeRouteView
 
-// Generated documents (opened in a new browser tab from the order screens).
+// --- Authentication endpoints ---------------------------------------------------
+
+app.MapPost("/auth/login", async (
+    HttpContext http,
+    [FromForm] string? password,
+    [FromForm] string? returnUrl,
+    PasswordAuthenticator auth) =>
+{
+    var target = ToLocalUrl(returnUrl);
+
+    if (!auth.Verify(password))
+        return Results.Redirect($"/login?error=1&returnUrl={Uri.EscapeDataString(target)}");
+
+    var identity = new ClaimsIdentity(
+        [new Claim(ClaimTypes.Name, auth.UserName)],
+        CookieAuthenticationDefaults.AuthenticationScheme);
+
+    await http.SignInAsync(
+        CookieAuthenticationDefaults.AuthenticationScheme,
+        new ClaimsPrincipal(identity),
+        new AuthenticationProperties { IsPersistent = true });
+
+    return Results.LocalRedirect(target);
+}).AllowAnonymous();
+
+app.MapPost("/auth/logout", async (HttpContext http) =>
+{
+    await http.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+    return Results.LocalRedirect("/login");
+}).DisableAntiforgery(); // authenticated + harmless; keeps the form simple inside the interactive layout
+
+static string ToLocalUrl(string? url) =>
+    !string.IsNullOrEmpty(url)
+    && url.StartsWith('/')
+    && !url.StartsWith("//")
+    && !url.StartsWith("/\\")
+    && Uri.IsWellFormedUriString(url, UriKind.Relative)
+        ? url
+        : "/";
+
+// --- Generated documents (opened in a new browser tab from the order screens) ---
+
 app.MapGet("/orders/{id:int}/proforma.pdf", (int id, OrderDocumentService d, HttpContext http) =>
     StreamDocument(http, "proforma invoice", () => d.BuildProformaAsync(id)));
 

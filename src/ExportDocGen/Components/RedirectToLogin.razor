@@ -1,0 +1,12 @@
+@inject NavigationManager Nav
+
+@code {
+    protected override void OnInitialized()
+    {
+        var returnUrl = "/" + Nav.ToBaseRelativePath(Nav.Uri);
+        var query = returnUrl is "/" or ""
+            ? ""
+            : $"?returnUrl={Uri.EscapeDataString(returnUrl)}";
+        Nav.NavigateTo($"login{query}", forceLoad: true);
+    }
+}

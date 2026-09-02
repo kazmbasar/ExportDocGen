@@ -1,0 +1,8 @@
+# Caddy gets and renews a Let's Encrypt certificate for SITE_ADDRESS automatically.
+# Requires: ports 80 + 443 reachable from the internet, and a DNS A record for
+# SITE_ADDRESS pointing at this server's public IP.
+
+{$SITE_ADDRESS} {
+	encode zstd gzip
+	reverse_proxy app:8080
+}

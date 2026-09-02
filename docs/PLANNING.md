@@ -164,14 +164,31 @@ Excel).
       chips on the order and customer lists, right-aligned monospace figures,
       consistent page headers and empty states. Fonts from Google Fonts.
       43 tests green. See `docs/DECISIONS.md` (2026-09-02).
+- [x] **M10 — Login + deployment.** _(2026-09-03)_ So the tool can run on a
+      public server without exposing the stock catalogue. **Single shared
+      password**, cookie auth (`Auth` config section, PBKDF2 hash in
+      `Auth__PasswordHash`; `dotnet run -- hash-password` to make one). Every
+      page and every document endpoint requires a login (`[Authorize]` in
+      `_Imports` + `AuthorizeRouteView` → `RedirectToLogin`; authorization
+      fallback policy covers the minimal-API endpoints). Static-SSR `/login`
+      form → `POST /auth/login` (`HttpContext.SignInAsync`); `POST /auth/logout`
+      + a "Sign out" button in the app bar. Data Protection keys persisted so
+      logins survive a redeploy; `DataDir` setting moves the SQLite file +
+      keys to a mounted volume; `UseForwardedHeaders` for running behind a
+      proxy. **Deployment:** `Dockerfile` + `docker-compose.yml` (app + Caddy
+      for automatic HTTPS) + `Caddyfile` + `.env.example`; `docs/DEPLOYMENT.md`
+      walks through an Oracle Cloud free-tier Ubuntu VM (both firewall layers,
+      Docker, DNS, `compose up`, backups). 54 tests. See `docs/DECISIONS.md`
+      (2026-09-03).
 - [ ] **Stock import UX.** A browser `/products/import` page; real gross weights;
       price data.
 - [ ] Filtorq-specific commercial-invoice layout (if their real one differs).
 - [ ] Self-host the web fonts (currently loaded from Google Fonts) if the tool
       needs to run without internet.
+- [ ] Named user accounts (if more than a couple of people end up using it).
 
-Next: **Kazim decides the direction** — stretch goals (`docs/PLANNING.md`), or
-the OEM cross-reference project.
+Next: **Kazim decides the direction** — stretch goals above, or the OEM
+cross-reference project.
 
 ## Excel order import (M5) — as built
 

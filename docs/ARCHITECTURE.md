@@ -19,7 +19,9 @@ Browser ──HTTP/SignalR──> Blazor Web App (Server interactivity)
 
 | Choice | Reason |
 |--------|--------|
-| Blazor Web App, **global Server** interactivity (`@rendermode="InteractiveServer"` on `<HeadOutlet>` + `<Routes>` in `App.razor`) | Single language (C#) for UI + logic; no API layer; no WASM download; fine for a local single-user tool. Global (not per-page) because every screen here is interactive. |
+| Blazor Web App, **global Server** interactivity (`@rendermode="InteractiveServer"` on `<HeadOutlet>` + `<Routes>` in `App.razor`) | Single language (C#) for UI + logic; no API layer; no WASM download; fine for a small-team tool. Global (not per-page) because every screen here is interactive. |
+| **Cookie auth, one shared password** (M10) | The tool now runs on a public server, so it needs a gate, but it's used by one or two people — a full identity store is overkill. `Auth__PasswordHash` (PBKDF2) is the whole credential. `login` is static SSR (cookies need an HTTP response); everything else is behind `[Authorize]` + an authz fallback policy. |
+| **Docker + Caddy** (M10) | One `docker compose up` on any Linux VM; Caddy does automatic HTTPS. State (SQLite + Data Protection keys) lives in a mounted volume, not the image. See `docs/DEPLOYMENT.md`. |
 | **SQLite** | Zero setup, single file, trivial backup (copy the file). Swap to PostgreSQL later only if it becomes multi-user. |
 | **EF Core Code-First + migrations** | Familiar, versioned schema, easy seeding. |
 | **QuestPDF** | Clean C# layout API, strong docs, actively maintained; good fit for structured business documents. |
@@ -29,14 +31,22 @@ Browser ──HTTP/SignalR──> Blazor Web App (Server interactivity)
 
 ```
 src/ExportDocGen/
-├── Program.cs                    # DI, DbContext, MudBlazor, QuestPDF license
+├── Program.cs                    # DI, DbContext, auth, MudBlazor, QuestPDF license, endpoints
 ├── appsettings.json              # logging + hosts only (CompanyProfile retired in M6.5)
+├── Auth/                         # ✅ M10 — single shared password
+│   ├── AuthOptions.cs            #   bound from the "Auth" config section
+│   ├── PasswordHash.cs           #   PBKDF2-SHA256, BCL only; "dotnet run -- hash-password"
+│   └── PasswordAuthenticator.cs  #   Verify(password) against the hash / dev plaintext
 ├── Components/
 │   ├── App.razor                 # host page — font <link>, pre-hydration dark-ground script
 │   ├── AppTheme.cs               # ✅ M9 — MudTheme: Ledger (light) + Console (dark) palettes + typography
-│   ├── Layout/MainLayout.razor   # ✅ M9 — theme provider (OS dark mode), t-light/t-dark shell, brand + nav
+│   ├── Routes.razor              # ✅ M10 — AuthorizeRouteView → RedirectToLogin
+│   ├── RedirectToLogin.razor     # ✅ M10 — full-page nav to /login?returnUrl=…
+│   ├── Layout/MainLayout.razor   # ✅ M9 — theme provider (OS dark mode); ✅ M10 — Sign out
+│   ├── Layout/LoginLayout.razor  # ✅ M10 — minimal chrome for the login page
+│   ├── Pages/Login.razor         # ✅ M10 — static-SSR form → POST /auth/login
 │   └── Pages/                    # dashboard, customer/product/order screens
-├── wwwroot/app.css               # ✅ M9 — theme layer: serif headings (light), nav rail, stat tiles, chips
+├── wwwroot/app.css               # ✅ M9 — theme layer + ✅ M10 — .login-* styles
 ├── Data/
 │   ├── AppDbContext.cs           # entity config lives inline in OnModelCreating for now
 │   ├── Entities/                 # Customer, Product, Order, OrderLine, SellerCompany, PaymentTerm
@@ -133,10 +143,33 @@ normalization, bad-cell flagging, header detection below a title row).
 startup if missing; connection string built in `Program.cs`. Keeps the DB out of
 the source tree.
 
-## Deployment (later)
+## Deployment (M10)
 
-`Dockerfile` (multi-stage `dotnet publish`) authored during M7 but not part of
-MVP. Local run is `dotnet run` or a published self-contained binary.
+`Dockerfile` (multi-stage `dotnet publish` → `aspnet` runtime, non-root, port
+`8080`) + `docker-compose.yml` (app + **Caddy** for automatic HTTPS) +
+`Caddyfile` + `.env.example`. `docs/DEPLOYMENT.md` is the step-by-step for an
+Oracle Cloud free-tier Ubuntu VM.
+
+- **Auth** (`src/ExportDocGen/Auth/`): one shared password. `PasswordAuthenticator`
+  checks a submission against `Auth__PasswordHash` (PBKDF2-SHA256, made by
+  `dotnet run -- hash-password`) or, in Development, `Auth:Password` plaintext.
+  Cookie scheme `ExportDocGen.Auth`, 14-day sliding.
+- **Gate:** `[Authorize]` in `Components/_Imports.razor` + `AuthorizeRouteView`
+  in `Routes.razor` (`NotAuthorized` → `RedirectToLogin`). `Login` / `Error` /
+  `NotFound` are `[AllowAnonymous]`. An authorization **fallback policy** makes
+  the document endpoints require a login too; `MapStaticAssets()` and
+  `MapRazorComponents()` are explicitly `.AllowAnonymous()` at the endpoint
+  level.
+- **Login flow:** static-SSR `Login.razor` `<form>` → `POST /auth/login`
+  (`SignInAsync` + local-only `returnUrl` redirect). `POST /auth/logout`
+  (`.DisableAntiforgery()`) + a Sign-out button in the app bar.
+- **State:** `DataDir` config (default: OS local-app-data; container: `/data`)
+  holds the SQLite file **and** the persisted Data Protection keys, so auth
+  cookies survive a redeploy. `UseForwardedHeaders` trusts Caddy's
+  `X-Forwarded-Proto`.
+
+Local run is still just `dotnet run` (`appsettings.Development.json` carries the
+dev password `dev`).
 
 ## Excel order import (M5) — done
 
@@ -208,6 +241,10 @@ See `docs/DECISIONS.md` (2026-09-01, stock catalogue import).
   `GET /orders/{id}/proforma.pdf`,
   `/orders/{id}/packing-list.pdf` · `.xlsx`,
   `/orders/{id}/commercial-invoice.pdf` · `.xlsx`.
+  These carry no auth opt-out, so the authorization fallback policy (M10)
+  requires a logged-in session — an anonymous request gets a redirect to
+  `/login`, not a PDF.
+- **Auth endpoints:** `POST /auth/login`, `POST /auth/logout`.
 - **Commercial invoice (M8):** `CommercialInvoiceModel` +
   `CommercialInvoiceDocument` — one shared layout, per-company letterhead (same
   `ProformaTemplate` branch as the packing list). `Order.InvoiceNumber` /

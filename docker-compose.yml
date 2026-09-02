@@ -1,0 +1,33 @@
+services:
+  app:
+    build: .
+    image: exportdocgen:latest
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Auth__UserName: "${AUTH_USERNAME:-Team}"
+      Auth__PasswordHash: "${AUTH_PASSWORD_HASH:?set AUTH_PASSWORD_HASH in .env — run: docker compose run --rm --no-deps -e Auth__PasswordHash=x app hash-password 'your-password'}"
+    volumes:
+      - app-data:/data
+    expose:
+      - "8080"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_ADDRESS: "${SITE_ADDRESS:?set SITE_ADDRESS in .env (the public hostname, e.g. exportdocgen.example.com)}"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+
+volumes:
+  app-data:
+  caddy-data:
+  caddy-config:

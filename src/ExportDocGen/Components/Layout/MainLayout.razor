@@ -17,6 +17,16 @@
             <span class="app-bar__group">Filtorq&nbsp;&nbsp;·&nbsp;&nbsp;İkiler</span>
             <MudIcon Icon="@(_isDarkMode ? Icons.Material.Outlined.DarkMode : Icons.Material.Outlined.LightMode)"
                      Size="Size.Small" Class="app-bar__mode" Title="Follows your system light / dark setting" />
+            <AuthorizeView>
+                <Authorized>
+                    <form method="post" action="/auth/logout" class="app-bar__logout">
+                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Text" Size="Size.Small"
+                                   Color="Color.Inherit" StartIcon="@Icons.Material.Outlined.Logout">
+                            Sign out
+                        </MudButton>
+                    </form>
+                </Authorized>
+            </AuthorizeView>
         </MudAppBar>
 
         <MudDrawer Open="true" Elevation="0" Variant="DrawerVariant.Persistent" Class="app-drawer">
