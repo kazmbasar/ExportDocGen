@@ -16,13 +16,13 @@
 }
 else
 {
-    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="page-head">
         <MudText Typo="Typo.h4">@(IsNew ? "New order" : $"Order {_order.OrderNumber}")</MudText>
         <MudSpacer />
         @if (!IsNew)
         {
-            <MudMenu Label="Documents" Variant="Variant.Filled" Color="Color.Secondary"
-                     StartIcon="@Icons.Material.Filled.Download" EndIcon="@Icons.Material.Filled.ArrowDropDown">
+            <MudMenu Label="Documents" Variant="Variant.Outlined" Color="Color.Primary"
+                     StartIcon="@Icons.Material.Outlined.Download" EndIcon="@Icons.Material.Filled.ArrowDropDown">
                 <MudMenuItem Href="@Doc("proforma.pdf")" Target="_blank"
                              Icon="@Icons.Material.Filled.PictureAsPdf">Proforma invoice (PDF)</MudMenuItem>
                 <MudMenuItem Href="@Doc("commercial-invoice.pdf")" Target="_blank"

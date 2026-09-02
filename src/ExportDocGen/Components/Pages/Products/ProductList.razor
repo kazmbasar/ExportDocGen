@@ -5,14 +5,19 @@
 
 <PageTitle>Products</PageTitle>
 
-<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
-    <MudText Typo="Typo.h4">Products</MudText>
-    <MudSpacer />
-    <MudButton Variant="Variant.Filled" Color="Color.Primary"
-               StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => OpenDialog(null))">
-        New product
-    </MudButton>
-</MudStack>
+<div class="page-head">
+    <MudStack Row="true" AlignItems="AlignItems.Center">
+        <div>
+            <MudText Typo="Typo.h4">Products</MudText>
+            <p class="page-lede">The stock catalogue — part number, HS code, weights and volume per unit.</p>
+        </div>
+        <MudSpacer />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => OpenDialog(null))">
+            New product
+        </MudButton>
+    </MudStack>
+</div>
 
 <MudDataGrid T="Product" Items="_products" Loading="_loading" Dense="true" Hover="true"
              QuickFilter="_quickFilter" SortMode="SortMode.Multiple" RowsPerPage="25">

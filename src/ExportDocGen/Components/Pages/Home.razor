@@ -1,41 +1,98 @@
 @page "/"
 @inject IDbContextFactory<AppDbContext> DbFactory
+@inject OrderService OrderService
 
 <PageTitle>ExportDocGen</PageTitle>
 
-<MudText Typo="Typo.h4" GutterBottom="true">ExportDocGen</MudText>
-<MudText Typo="Typo.body1" Class="mb-6">
-    Generate proforma invoices and packing lists for filter export orders.
-</MudText>
+<div class="page-head">
+    <MudStack Row="true" AlignItems="AlignItems.Center">
+        <div>
+            <MudText Typo="Typo.h4">Dashboard</MudText>
+            <p class="page-lede">
+                Proforma invoices, commercial invoices and packing lists for Filtorq and
+                İkiler filter export orders.
+            </p>
+        </div>
+        <MudSpacer />
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Outlined.UploadFile" Href="/orders/import" Class="mr-2">
+            Import from Excel
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add" Href="/orders/new">
+            New order
+        </MudButton>
+    </MudStack>
+</div>
 
-<MudGrid>
-    <MudItem xs="12" sm="4">
-        <MudPaper Class="pa-4" Elevation="1">
-            <MudText Typo="Typo.overline">Customers</MudText>
-            <MudText Typo="Typo.h5">@(_counts?.Customers.ToString() ?? "…")</MudText>
-        </MudPaper>
-    </MudItem>
-    <MudItem xs="12" sm="4">
-        <MudPaper Class="pa-4" Elevation="1">
-            <MudText Typo="Typo.overline">Products</MudText>
-            <MudText Typo="Typo.h5">@(_counts?.Products.ToString() ?? "…")</MudText>
-        </MudPaper>
-    </MudItem>
-    <MudItem xs="12" sm="4">
-        <MudPaper Class="pa-4" Elevation="1">
-            <MudText Typo="Typo.overline">Orders</MudText>
-            <MudText Typo="Typo.h5">@(_counts?.Orders.ToString() ?? "…")</MudText>
-        </MudPaper>
-    </MudItem>
-</MudGrid>
+<div class="dash-stats mb-8">
+    <div class="dash-stat">
+        <span class="dash-stat__k">Customers</span>
+        <span class="dash-stat__v"><a href="/customers">@Show(_counts?.Customers)</a></span>
+    </div>
+    <div class="dash-stat">
+        <span class="dash-stat__k">Products</span>
+        <span class="dash-stat__v"><a href="/products">@Show(_counts?.Products)</a></span>
+    </div>
+    <div class="dash-stat">
+        <span class="dash-stat__k">Orders</span>
+        <span class="dash-stat__v"><a href="/orders">@Show(_counts?.Orders)</a></span>
+    </div>
+</div>
 
-<MudAlert Severity="Severity.Info" Class="mt-6" Dense="true">
-    Scaffold in place — database, seed data and UI shell are working. CRUD screens
-    come next (milestone M2).
-</MudAlert>
+<MudText Typo="Typo.h6" Class="mb-3">Recent orders</MudText>
+
+@if (_recent is null)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else if (_recent.Count == 0)
+{
+    <MudPaper Outlined="true" Elevation="0" Class="pa-8" Style="text-align:center">
+        <MudText Typo="Typo.body1" Class="mb-1">No orders yet.</MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
+            Build one line by line, or import a customer spreadsheet.
+        </MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add" Href="/orders/new">New order</MudButton>
+    </MudPaper>
+}
+else
+{
+    <MudPaper Outlined="true" Elevation="0">
+        <MudSimpleTable Hover="true" Elevation="0" Class="edg-recent">
+            <thead>
+                <tr>
+                    <th>Order no.</th>
+                    <th>Date</th>
+                    <th>Customer</th>
+                    <th>Exporter</th>
+                    <th class="text-right">Lines</th>
+                    <th class="text-right">Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var o in _recent)
+                {
+                    <tr @key="o.Id" style="cursor:pointer" @onclick="@(() => Nav($"/orders/{o.Id}"))">
+                        <td class="edg-num">@o.OrderNumber</td>
+                        <td>@o.OrderDate.ToString("dd.MM.yyyy")</td>
+                        <td>@o.CustomerName</td>
+                        <td><span class="edg-chip">@o.SellerShortName</span></td>
+                        <td class="text-right edg-num">@o.LineCount</td>
+                        <td class="text-right edg-num">@o.Subtotal.ToString("N2") @o.Currency</td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </MudPaper>
+}
 
 @code {
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+
     private Counts? _counts;
+    private List<OrderListItem>? _recent;
 
     protected override async Task OnInitializedAsync()
     {
@@ -44,7 +101,13 @@
             await db.Customers.CountAsync(),
             await db.Products.CountAsync(),
             await db.Orders.CountAsync());
+
+        _recent = (await OrderService.GetListAsync()).Take(6).ToList();
     }
+
+    private static string Show(int? n) => n?.ToString("N0") ?? "…";
+
+    private void Nav(string url) => Navigation.NavigateTo(url);
 
     private record Counts(int Customers, int Products, int Orders);
 }

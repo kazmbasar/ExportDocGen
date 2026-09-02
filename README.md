@@ -6,11 +6,15 @@ Excel/Word copy-paste.
 
 ## Status
 
-**M8 (Commercial invoice + Excel downloads) complete.** Started 2026-08-31.
-Solution builds, runs, and has 42 passing tests. SQLite database, EF Core
-migrations, seed data, the MudBlazor UI shell, Customer/Product CRUD, the order
-builder, live calculations, Excel order import, the real ~16,600-row stock
-catalogue, and three export documents per order.
+**M9 (UI polish) complete — MVP done.** Started 2026-08-31. Solution builds,
+runs, and has 43 passing tests. SQLite database, EF Core migrations, seed data,
+Customer/Product CRUD, the order builder, live calculations, Excel order import,
+the real ~16,600-row stock catalogue, and three export documents per order.
+
+The UI is themed (M9): one house theme with two faces — **Ledger** (light: warm
+paper, customs-green, serif headings) and **Console** (dark: slate,
+filtration-teal, Inter) — following the OS light/dark setting. See
+`docs/DECISIONS.md` (2026-09-02).
 
 The group's **two exporting companies** (Filtorq, İkiler Otomotiv) are modelled
 as `SellerCompany` rows. Each **customer** is assigned an exporter company; every

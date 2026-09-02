@@ -149,19 +149,29 @@ Excel).
 - [x] **Real end-to-end run.** _(2026-09-02)_ Kazim ran a real export order
       through the app and produced its documents — "works efficiently". The MVP
       success criterion is met.
-- [ ] **M9 — UI polish (planned 2026-09-02, do next).** Kazim: *"first make more
-      beautiful UI for this generator, after that we will decide."* Purely a
-      visual / UX pass over the existing MudBlazor screens (dashboard, customer /
-      product / order lists and forms, the order builder, the document menu) —
-      theme, spacing, layout, empty states, iconography, responsiveness. No new
-      features; no data-model or document changes. Scope the specifics with
-      Kazim before starting.
+- [x] **M9 — UI polish.** _(2026-09-02)_ A visual / UX pass over the existing
+      MudBlazor screens — no new features, no data-model or document changes.
+      One house theme with two faces, chosen by Kazim from three mock-ups:
+      **Ledger** (light — warm paper `#FBFBF9`, deep customs-green `#1F5C43`,
+      Newsreader serif headings) and **Console** (dark — slate `#13161B`,
+      filtration-teal `#3FB8A8`, Inter). `AppTheme.cs` holds both palettes +
+      typography; the light-only serif headings are applied in `app.css` under
+      `.app-shell.t-light` (dialogs stay sans). Follows the OS light/dark
+      setting (`MudThemeProvider` + `ObserveSystemDarkModeChange`), with an
+      inline boot script painting the right ground before the circuit connects.
+      New app shell (brand mark, sectioned nav with an active rail), a real
+      dashboard (ruled/panelled stat tiles + recent-orders table), exporter
+      chips on the order and customer lists, right-aligned monospace figures,
+      consistent page headers and empty states. Fonts from Google Fonts.
+      43 tests green. See `docs/DECISIONS.md` (2026-09-02).
 - [ ] **Stock import UX.** A browser `/products/import` page; real gross weights;
       price data.
 - [ ] Filtorq-specific commercial-invoice layout (if their real one differs).
+- [ ] Self-host the web fonts (currently loaded from Google Fonts) if the tool
+      needs to run without internet.
 
-Next: **M9 UI polish**, then Kazim decides the direction (stretch goals or the
-cross-reference project).
+Next: **Kazim decides the direction** — stretch goals (`docs/PLANNING.md`), or
+the OEM cross-reference project.
 
 ## Excel order import (M5) — as built
 

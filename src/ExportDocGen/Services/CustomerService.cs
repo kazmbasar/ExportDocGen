@@ -11,6 +11,7 @@ public class CustomerService(IDbContextFactory<AppDbContext> dbFactory)
         await using var db = await dbFactory.CreateDbContextAsync();
         return await db.Customers
             .AsNoTracking()
+            .Include(c => c.SellerCompany)
             .OrderBy(c => c.Name)
             .ToListAsync();
     }

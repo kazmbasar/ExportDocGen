@@ -23,7 +23,7 @@ Browser ──HTTP/SignalR──> Blazor Web App (Server interactivity)
 | **SQLite** | Zero setup, single file, trivial backup (copy the file). Swap to PostgreSQL later only if it becomes multi-user. |
 | **EF Core Code-First + migrations** | Familiar, versioned schema, easy seeding. |
 | **QuestPDF** | Clean C# layout API, strong docs, actively maintained; good fit for structured business documents. |
-| **MudBlazor** | Free, complete Material component set — data grids, dialogs, forms, snackbars — saves building UI primitives. |
+| **MudBlazor** | Free, complete Material component set — data grids, dialogs, forms, snackbars — saves building UI primitives. Themed in `AppTheme.cs` (M9): one house theme, two faces — **Ledger** light / **Console** dark — following the OS setting. |
 
 ## Project structure (inside `src/ExportDocGen/`)
 
@@ -31,6 +31,12 @@ Browser ──HTTP/SignalR──> Blazor Web App (Server interactivity)
 src/ExportDocGen/
 ├── Program.cs                    # DI, DbContext, MudBlazor, QuestPDF license
 ├── appsettings.json              # logging + hosts only (CompanyProfile retired in M6.5)
+├── Components/
+│   ├── App.razor                 # host page — font <link>, pre-hydration dark-ground script
+│   ├── AppTheme.cs               # ✅ M9 — MudTheme: Ledger (light) + Console (dark) palettes + typography
+│   ├── Layout/MainLayout.razor   # ✅ M9 — theme provider (OS dark mode), t-light/t-dark shell, brand + nav
+│   └── Pages/                    # dashboard, customer/product/order screens
+├── wwwroot/app.css               # ✅ M9 — theme layer: serif headings (light), nav rail, stat tiles, chips
 ├── Data/
 │   ├── AppDbContext.cs           # entity config lives inline in OnModelCreating for now
 │   ├── Entities/                 # Customer, Product, Order, OrderLine, SellerCompany, PaymentTerm

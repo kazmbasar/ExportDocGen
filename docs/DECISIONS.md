@@ -5,18 +5,48 @@ revisit.
 
 ---
 
-## 2026-09-02 — MVP complete; next is UI polish.
+## 2026-09-02 — M9: house theme (Ledger light / Console dark).
 
-Kazim ran a real export order through the app end to end and confirmed it
-"works efficiently" — the MVP success criterion is met (proforma + packing list
-+ commercial invoice, PDF and editable Excel, for both companies).
+Kazim picked a direction from three minimalist mock-ups: **one theme with two
+faces**, keyed to the OS light/dark setting.
 
-**Next milestone: M9 — UI polish.** Kazim: *"first make more beautiful UI for
-this generator, after that we will decide."* A visual / UX pass only over the
-existing MudBlazor screens — theme, spacing, layout, empty states, icons,
-responsiveness. **No new features, no data-model or document changes.** Scope
-the specifics with Kazim before starting. Direction after that is undecided
-(stretch goals, or the OEM cross-reference project).
+- **Light = "Ledger"** — warm paper `#FBFBF9`, deep customs-green `#1F5C43`,
+  **Newsreader** serif headings + serif small-caps labels, ruled (not carded)
+  stat tiles, striped rows. The feel of a trade document.
+- **Dark = "Console"** — slate `#13161B` / `#171B21`, filtration-teal `#3FB8A8`
+  reserved for actions, amber for state, **Inter**, panelled stat tiles, hover
+  rows. An operations console.
+- **Body text is Inter in both modes**; only the headings swap serif→sans.
+  Kazim chose "serif in light, sans in dark" over one shared face — accepted the
+  small extra maintenance for the distinct character of each mode.
+- **Follows the OS** (`MudThemeProvider` + `ObserveSystemDarkModeChange`,
+  seeded with `GetSystemDarkModeAsync`) — no in-app toggle. An inline script in
+  `App.razor` sets `html.edg-boot-dark` from `matchMedia` so a dark-mode user
+  doesn't see the light ground flash before the Blazor circuit connects
+  (heavier pages still settle their component styling a beat late — acceptable
+  for an internal tool; revisit if it annoys).
+
+**Implementation.** `Components/AppTheme.cs` = `MudTheme` with `PaletteLight` +
+`PaletteDark` + typography (all Inter). The light-only serif headings are CSS,
+not theme: `app.css` overrides `--mud-typography-*-family` under
+`.app-shell.t-light` (double class beats the theme's `:root` block), scoped to
+the shell so portaled dialogs/menus stay sans in both modes. `MainLayout` gets
+a `t-light` / `t-dark` wrapper class, a brand mark, and a sectioned nav with an
+active rail. New dashboard (stat tiles + recent-orders table + empty state),
+exporter chips (`.edg-chip`) on the order and customer lists, monospace
+right-aligned figures (`.edg-num`), consistent `.page-head` headers.
+
+**Fonts** load from Google Fonts (`<link>` in `App.razor`, same pattern as the
+old Roboto link) — Newsreader, Inter, IBM Plex Sans, IBM Plex Mono. Self-hosting
+is a backlog item if the tool ever needs to run offline.
+
+**No behaviour, data-model, document, endpoint or service-logic change**
+(one query gained `.Include(c => c.SellerCompany)` for the new customer-list
+column). 43 tests unchanged and green.
+
+**Revisit if:** Kazim wants an in-app theme toggle; the pre-hydration flash on
+heavy pages is distracting; or the two-font-system upkeep proves annoying (fall
+back to Inter headings everywhere).
 
 ## 2026-09-02 — M7b: packing list PDF matched to the real document.
 

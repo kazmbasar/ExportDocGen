@@ -2,6 +2,165 @@ h1:focus {
     outline: none;
 }
 
+/* ============================================================
+   ExportDocGen — house theme layer (M9)
+   Light = "Ledger" (warm paper, customs-green, serif headings)
+   Dark  = "Console" (slate, filtration-teal, sans headings)
+   ============================================================ */
+
+:root {
+    --edg-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --edg-serif: "Newsreader", Georgia, Cambria, "Times New Roman", serif;
+}
+
+/* Light-only serif headings — scoped to the shell so portaled dialogs/menus
+   stay sans in both modes. The double class beats the theme's :root block. */
+.app-shell.t-light {
+    --mud-typography-h1-family: var(--edg-serif);
+    --mud-typography-h2-family: var(--edg-serif);
+    --mud-typography-h3-family: var(--edg-serif);
+    --mud-typography-h4-family: var(--edg-serif);
+    --mud-typography-h5-family: var(--edg-serif);
+    --mud-typography-h6-family: var(--edg-serif);
+    --mud-typography-subtitle1-family: var(--edg-serif);
+}
+
+/* pre-hydration ground (set by the inline script in App.razor) */
+html.edg-boot-dark, html.edg-boot-dark body { background: #13161B; }
+
+.app-shell { min-height: 100vh; background: var(--mud-palette-background); }
+.app-shell .mud-layout { background: var(--mud-palette-background); }
+.app-main { background: var(--mud-palette-background); }
+
+/* --- app bar: hairline, flat --- */
+.app-bar.mud-appbar {
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+    box-shadow: none;
+}
+.app-brand { display: flex; align-items: center; gap: 10px; }
+.app-brand__mark {
+    display: grid; place-items: center;
+    width: 26px; height: 26px; border-radius: 6px;
+    background: var(--mud-palette-primary);
+    color: var(--mud-palette-primary-text);
+    font: 700 14px/1 var(--edg-mono);
+}
+.app-brand__name {
+    font-size: 18px; font-weight: 600; letter-spacing: -0.01em;
+    color: var(--mud-palette-text-primary);
+}
+.t-light .app-brand__name { font-family: var(--edg-serif); }
+.app-bar__group {
+    font: 500 12px/1 var(--edg-mono);
+    letter-spacing: 0.04em;
+    color: var(--mud-palette-text-secondary);
+    margin-right: 14px;
+}
+.app-bar__mode.mud-icon-root {
+    color: var(--mud-palette-text-secondary);
+    font-size: 1.15rem;
+}
+
+/* --- drawer + nav --- */
+.app-drawer.mud-drawer { border-right: 1px solid var(--mud-palette-lines-default); }
+.app-nav { padding: 8px 10px 16px; }
+.app-nav__cap {
+    font: 600 10.5px/1 var(--edg-mono);
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--mud-palette-text-secondary); opacity: 0.7;
+    padding: 18px 12px 8px;
+}
+.app-nav .mud-nav-link {
+    border-radius: 7px; margin: 1px 0; min-height: 40px;
+    font-size: 13.5px; font-weight: 500;
+    color: var(--mud-palette-text-secondary);
+}
+.app-nav .mud-nav-link:hover {
+    background: var(--mud-palette-action-default-hover, rgba(128, 128, 128, 0.08));
+}
+.app-nav .mud-nav-link.active { color: var(--mud-palette-primary); font-weight: 600; }
+.t-light .app-nav .mud-nav-link.active { background: rgba(31, 92, 67, 0.10); }
+.t-dark .app-nav .mud-nav-link.active {
+    background: var(--mud-palette-background-gray);
+    box-shadow: inset 2px 0 0 var(--mud-palette-primary);
+}
+.app-nav .mud-nav-link.active .mud-nav-link-icon { color: var(--mud-palette-primary); }
+
+/* --- page container + header --- */
+.app-page { padding-top: 32px; padding-bottom: 72px; }
+.page-head { margin-bottom: 26px; }
+.page-head .mud-typography-h4 { font-size: 1.9rem; }
+.page-lede { color: var(--mud-palette-text-secondary); margin: 6px 0 0; max-width: 62ch; }
+
+/* --- dashboard stat tiles --- */
+.dash-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+@media (max-width: 720px) { .dash-stats { grid-template-columns: 1fr; } }
+.dash-stat { display: flex; flex-direction: column; gap: 4px; }
+.dash-stat__k {
+    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+}
+.dash-stat__v {
+    font-family: var(--edg-mono); font-variant-numeric: tabular-nums;
+    font-size: 30px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.1;
+    color: var(--mud-palette-text-primary);
+}
+.dash-stat__v a { color: inherit; text-decoration: none; }
+.t-light .dash-stat { border-bottom: 2px solid var(--mud-palette-lines-default); padding-bottom: 8px; }
+.t-light .dash-stat__k {
+    font-family: var(--edg-serif); font-variant: small-caps;
+    letter-spacing: 0.05em; text-transform: none; font-size: 13.5px;
+}
+.t-dark .dash-stat {
+    background: var(--mud-palette-surface);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 9px; padding: 14px 15px;
+}
+.t-dark .dash-stat:first-child { box-shadow: inset 0 -2px 0 var(--mud-palette-primary); }
+
+/* --- simple-table alignment helpers (used by the order tables) --- */
+.app-shell .text-right { text-align: right; }
+.app-shell .text-center { text-align: center; }
+
+/* --- recent-orders table on the dashboard --- */
+.edg-recent thead th {
+    font-size: 10.5px; font-weight: 600;
+    letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+}
+.edg-recent tbody tr:last-child td { border-bottom: 0; }
+
+/* --- data grid polish --- */
+.mud-data-grid .mud-table-head .mud-table-cell {
+    font-size: 10.5px; font-weight: 600;
+    letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+}
+.mud-data-grid .mud-table-cell { border-color: var(--mud-palette-table-lines); }
+.edg-num { font-family: var(--edg-mono); font-variant-numeric: tabular-nums; }
+
+/* --- outlined paper → themed card --- */
+.mud-paper-outlined { border-color: var(--mud-palette-lines-default); border-radius: 8px; }
+
+/* --- exporter chip --- */
+.edg-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+    padding: 2px 9px; border-radius: 999px;
+    background: var(--mud-palette-background-gray);
+    color: var(--mud-palette-text-secondary);
+    white-space: nowrap;
+}
+.edg-chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.t-light .edg-chip { background: transparent; padding-left: 0; color: var(--mud-palette-primary); }
+
+@media (prefers-reduced-motion: reduce) {
+    .app-shell *, .app-shell *::before, .app-shell *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+    }
+}
+
 .valid.modified:not([type=checkbox]) {
     outline: 1px solid #26b050;
 }

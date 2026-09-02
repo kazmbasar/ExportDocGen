@@ -5,14 +5,16 @@
 
 <PageTitle>Customers</PageTitle>
 
-<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
-    <MudText Typo="Typo.h4">Customers</MudText>
-    <MudSpacer />
-    <MudButton Variant="Variant.Filled" Color="Color.Primary"
-               StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => OpenDialog(null))">
-        New customer
-    </MudButton>
-</MudStack>
+<div class="page-head">
+    <MudStack Row="true" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.h4">Customers</MudText>
+        <MudSpacer />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => OpenDialog(null))">
+            New customer
+        </MudButton>
+    </MudStack>
+</div>
 
 <MudDataGrid T="Customer" Items="_customers" Loading="_loading" Dense="true" Hover="true"
              QuickFilter="_quickFilter" SortMode="SortMode.Multiple">
@@ -24,6 +26,14 @@
     <Columns>
         <PropertyColumn Property="c => c.Name" Title="Name" />
         <PropertyColumn Property="c => c.Country" Title="Country" />
+        <TemplateColumn Title="Exporter" SortBy="c => c.SellerCompany!.ShortName">
+            <CellTemplate>
+                @if (context.Item.SellerCompany is { } s)
+                {
+                    <span class="edg-chip">@s.ShortName</span>
+                }
+            </CellTemplate>
+        </TemplateColumn>
         <PropertyColumn Property="c => c.DefaultIncoterm" Title="Incoterm" />
         <PropertyColumn Property="c => c.DefaultCurrency" Title="Currency" />
         <PropertyColumn Property="c => c.ContactName" Title="Contact" />

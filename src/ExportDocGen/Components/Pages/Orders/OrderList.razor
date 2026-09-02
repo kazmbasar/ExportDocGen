@@ -6,18 +6,20 @@
 
 <PageTitle>Orders</PageTitle>
 
-<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
-    <MudText Typo="Typo.h4">Orders</MudText>
-    <MudSpacer />
-    <MudButton Variant="Variant.Outlined" Color="Color.Primary"
-               StartIcon="@Icons.Material.Filled.UploadFile" Href="/orders/import" Class="mr-2">
-        Import from Excel
-    </MudButton>
-    <MudButton Variant="Variant.Filled" Color="Color.Primary"
-               StartIcon="@Icons.Material.Filled.Add" Href="/orders/new">
-        New order
-    </MudButton>
-</MudStack>
+<div class="page-head">
+    <MudStack Row="true" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.h4">Orders</MudText>
+        <MudSpacer />
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Outlined.UploadFile" Href="/orders/import" Class="mr-2">
+            Import from Excel
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add" Href="/orders/new">
+            New order
+        </MudButton>
+    </MudStack>
+</div>
 
 <MudDataGrid T="OrderListItem" Items="_filtered" Loading="_loading" Dense="true" Hover="true"
              QuickFilter="_quickFilter" SortMode="SortMode.Multiple">
@@ -35,13 +37,21 @@
         </MudSelect>
     </ToolBarContent>
     <Columns>
-        <PropertyColumn Property="o => o.OrderNumber" Title="Order no." />
-        <PropertyColumn Property="o => o.OrderDate" Title="Date" Format="yyyy-MM-dd" />
+        <TemplateColumn Title="Order no." SortBy="o => o.OrderNumber">
+            <CellTemplate><span class="edg-num">@context.Item.OrderNumber</span></CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Date" SortBy="o => o.OrderDate">
+            <CellTemplate>@context.Item.OrderDate.ToString("dd.MM.yyyy")</CellTemplate>
+        </TemplateColumn>
         <PropertyColumn Property="o => o.CustomerName" Title="Customer" />
-        <PropertyColumn Property="o => o.SellerShortName" Title="Exporter" />
-        <PropertyColumn Property="o => o.LineCount" Title="Lines" />
-        <TemplateColumn Title="Subtotal" Sortable="false">
-            <CellTemplate>@context.Item.Subtotal.ToString("N2") @context.Item.Currency</CellTemplate>
+        <TemplateColumn Title="Exporter" SortBy="o => o.SellerShortName">
+            <CellTemplate><span class="edg-chip">@context.Item.SellerShortName</span></CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Lines" SortBy="o => o.LineCount" CellClass="text-right">
+            <CellTemplate><span class="edg-num">@context.Item.LineCount</span></CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Subtotal" Sortable="false" CellClass="text-right">
+            <CellTemplate><span class="edg-num">@context.Item.Subtotal.ToString("N2") @context.Item.Currency</span></CellTemplate>
         </TemplateColumn>
         <TemplateColumn Title="" Sortable="false" Filterable="false" CellClass="d-flex justify-end">
             <CellTemplate>

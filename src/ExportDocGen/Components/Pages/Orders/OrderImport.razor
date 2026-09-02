@@ -10,11 +10,13 @@
 
 <PageTitle>Import order from Excel</PageTitle>
 
-<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
-    <MudText Typo="Typo.h4">Import order from Excel</MudText>
-    <MudSpacer />
-    <MudButton OnClick="@(() => Nav.NavigateTo("/orders"))">Cancel</MudButton>
-</MudStack>
+<div class="page-head">
+    <MudStack Row="true" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.h4">Import order from Excel</MudText>
+        <MudSpacer />
+        <MudButton OnClick="@(() => Nav.NavigateTo("/orders"))">Cancel</MudButton>
+    </MudStack>
+</div>
 
 @if (_step == Step.Upload)
 {

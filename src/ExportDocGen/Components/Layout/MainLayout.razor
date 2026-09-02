@@ -1,33 +1,59 @@
 @inherits LayoutComponentBase
 
-<MudThemeProvider />
+<MudThemeProvider @ref="_themeProvider" Theme="AppTheme.Theme"
+                  @bind-IsDarkMode="_isDarkMode" ObserveSystemDarkModeChange="true" />
 <MudPopoverProvider />
-<MudDialogProvider />
+<MudDialogProvider MaxWidth="MaxWidth.Small" CloseButton="true" />
 <MudSnackbarProvider />
 
-<MudLayout>
-    <MudAppBar Elevation="1">
-        <MudText Typo="Typo.h6">ExportDocGen</MudText>
-        <MudSpacer />
-        <MudText Typo="Typo.body2">Export Document Generator</MudText>
-    </MudAppBar>
-    <MudDrawer Open="true" Elevation="1" Variant="DrawerVariant.Persistent">
-        <MudNavMenu>
-            <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
-            <MudNavLink Href="/customers" Icon="@Icons.Material.Filled.Business">Customers</MudNavLink>
-            <MudNavLink Href="/products" Icon="@Icons.Material.Filled.FilterAlt">Products</MudNavLink>
-            <MudNavLink Href="/orders" Icon="@Icons.Material.Filled.Description">Orders</MudNavLink>
-        </MudNavMenu>
-    </MudDrawer>
-    <MudMainContent>
-        <MudContainer MaxWidth="MaxWidth.Large" Class="my-6">
-            @Body
-        </MudContainer>
-    </MudMainContent>
-</MudLayout>
+<div class="app-shell @(_isDarkMode ? "t-dark" : "t-light")">
+    <MudLayout>
+        <MudAppBar Elevation="0" Class="app-bar">
+            <div class="app-brand">
+                <span class="app-brand__mark">E</span>
+                <span class="app-brand__name">ExportDocGen</span>
+            </div>
+            <MudSpacer />
+            <span class="app-bar__group">Filtorq&nbsp;&nbsp;·&nbsp;&nbsp;İkiler</span>
+            <MudIcon Icon="@(_isDarkMode ? Icons.Material.Outlined.DarkMode : Icons.Material.Outlined.LightMode)"
+                     Size="Size.Small" Class="app-bar__mode" Title="Follows your system light / dark setting" />
+        </MudAppBar>
+
+        <MudDrawer Open="true" Elevation="0" Variant="DrawerVariant.Persistent" Class="app-drawer">
+            <MudNavMenu Class="app-nav">
+                <div class="app-nav__cap">Workspace</div>
+                <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.SpaceDashboard">Dashboard</MudNavLink>
+                <MudNavLink Href="/orders" Icon="@Icons.Material.Outlined.Description">Orders</MudNavLink>
+                <div class="app-nav__cap">Catalogue</div>
+                <MudNavLink Href="/customers" Icon="@Icons.Material.Outlined.Business">Customers</MudNavLink>
+                <MudNavLink Href="/products" Icon="@Icons.Material.Outlined.FilterAlt">Products</MudNavLink>
+            </MudNavMenu>
+        </MudDrawer>
+
+        <MudMainContent Class="app-main">
+            <MudContainer MaxWidth="MaxWidth.Large" Class="app-page">
+                @Body
+            </MudContainer>
+        </MudMainContent>
+    </MudLayout>
+</div>
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.
     <a href="." class="reload">Reload</a>
     <span class="dismiss">🗙</span>
 </div>
+
+@code {
+    private MudThemeProvider _themeProvider = null!;
+    private bool _isDarkMode;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _isDarkMode = await _themeProvider.GetSystemDarkModeAsync();
+            StateHasChanged();
+        }
+    }
+}
