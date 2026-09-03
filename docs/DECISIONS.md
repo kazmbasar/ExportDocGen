@@ -5,21 +5,35 @@ revisit.
 
 ---
 
-## 2026-09-03 — dropped the Docker/Caddy deployment.
+## 2026-09-03 — Docker image built and verified; two Dockerfile fixes.
 
-The M10 commit had also added a `Dockerfile`, `docker-compose.yml` (app +
-Caddy), `Caddyfile`, `.env.example`, and `docs/DEPLOYMENT.md` (an Oracle Cloud
-free-tier VM walkthrough). Removed the same day — Kazim decided against that
-hosting path for now. The login and the production plumbing (`DataDir`,
-`UseForwardedHeaders`) stay. If a container deployment comes back, the Git
-history at commit `3de6c5f` has the originals.
+The deployment files were briefly removed (a hosting-path detour) then reinstated
+once Docker was available on the dev machine and the image could actually be
+built and run. Two bugs surfaced that would only have shown up on the server:
 
-**Revisit if:** a concrete hosting target is picked and it wants a container image.
+- **`adduser` isn't in `mcr.microsoft.com/dotnet/aspnet:10.0`** (Ubuntu 24.04
+  chiselled-ish). The image already ships a non-root `app` user (UID 1654), so
+  the runtime stage now just `mkdir /data && chown app:app /data` + `USER app`.
+- **`dotnet restore` + `dotnet publish --no-restore` (the layer-caching split)
+  drops the framework static web assets** (`wwwroot/_framework/blazor.web.js`)
+  on SDK **10.0.400** — the image built clean but Blazor interactivity 404'd at
+  runtime. Fixed by doing a single `dotnet publish` that restores as part of the
+  build. Documented inline in the `Dockerfile` so it doesn't get "optimised"
+  back.
 
-## 2026-09-03 — M10: single-password login.
+Verified locally with Docker: container boots + migrates + seeds; login gate and
+the five document endpoints require auth; `docker compose` with Caddy terminates
+TLS, redirects http→https, and the app emits `https://` URLs via
+`UseForwardedHeaders`; Data Protection keys + SQLite survive `docker restart`
+(logins persist).
 
-Kazim wants to run the tool on a shared/hosted server so he can use it from work
-— but the ~16,600-row stock catalogue and the customer list must not be public.
+---
+
+## 2026-09-03 — M10: single-password login + Docker/Caddy deployment.
+
+Kazim wants to run the tool on a public server (an Oracle Cloud free-tier VM) so
+he can use it from work — but the ~16,600-row stock catalogue and the customer
+list must not be public.
 
 **Auth model: one shared password.** Not per-user accounts — he asked for the
 simplest thing, and it's him plus maybe a colleague. Cookie authentication;
@@ -51,20 +65,27 @@ with no `@rendermode`; the endpoint calls `HttpContext.SignInAsync` and
 with `.DisableAntiforgery()` (authenticated + harmless) so the button works from
 inside the interactive layout.
 
+**Deployment: Docker + Caddy.** `Dockerfile` (SDK build → `aspnet` runtime,
+non-root, listens on `8080`), `docker-compose.yml` runs the app plus **Caddy**
+as the TLS terminator (automatic Let's Encrypt for `$SITE_ADDRESS`; the app
+port is not published to the host). `docs/DEPLOYMENT.md` covers the
+Oracle-specific parts — the **two** firewall layers (VCN security list *and* the
+Ubuntu image's iptables), Docker install, `.env`, DNS A record, `compose up`,
+backups. Kazim has a domain (chosen over a free DuckDNS subdomain or a
+self-signed cert).
+
 **Production plumbing this pulled in:**
 - `DataDir` config setting → SQLite DB **and** Data Protection keys live under
-  one directory (default: OS local-app-data), so auth cookies survive a restart.
+  `/data` (a mounted volume), so cookies survive a redeploy and the DB isn't in
+  the container layer.
 - `UseForwardedHeaders` (X-Forwarded-Proto/For, known-proxy list cleared) so the
-  app sees HTTPS correctly if it's ever put behind a reverse proxy.
-- Removed `UseHttpsRedirection` (a TLS terminator in front would own the
-  http→https redirect).
-
-**Deployment:** left open for now — plain `dotnet` on a host, or whatever the
-target server offers. Set `Auth__PasswordHash` (and optionally `DataDir`) as
-environment variables.
+  app sees HTTPS behind Caddy.
+- Removed `UseHttpsRedirection` (Caddy owns the http→https redirect; keeping it
+  only produced a startup warning in the container).
 
 **Revisit if:** more than ~2 people use it (→ named accounts, maybe an identity
-store); or the shared password needs rotating often (→ a tiny admin page).
+store); the shared password needs rotating often (→ a tiny admin page); or the
+VM proves too small (unlikely — idles ~150 MB).
 
 ## 2026-09-02 — M9: house theme (Ledger light / Console dark).
 

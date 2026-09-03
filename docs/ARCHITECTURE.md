@@ -20,7 +20,8 @@ Browser ──HTTP/SignalR──> Blazor Web App (Server interactivity)
 | Choice | Reason |
 |--------|--------|
 | Blazor Web App, **global Server** interactivity (`@rendermode="InteractiveServer"` on `<HeadOutlet>` + `<Routes>` in `App.razor`) | Single language (C#) for UI + logic; no API layer; no WASM download; fine for a small-team tool. Global (not per-page) because every screen here is interactive. |
-| **Cookie auth, one shared password** (M10) | The tool needs a gate before it can run on a shared/hosted server, but it's used by one or two people — a full identity store is overkill. `Auth__PasswordHash` (PBKDF2) is the whole credential. `login` is static SSR (cookies need an HTTP response); everything else is behind `[Authorize]` + an authz fallback policy. |
+| **Cookie auth, one shared password** (M10) | The tool now runs on a public server, so it needs a gate, but it's used by one or two people — a full identity store is overkill. `Auth__PasswordHash` (PBKDF2) is the whole credential. `login` is static SSR (cookies need an HTTP response); everything else is behind `[Authorize]` + an authz fallback policy. |
+| **Docker + Caddy** (M10) | One `docker compose up` on any Linux VM; Caddy does automatic HTTPS. State (SQLite + Data Protection keys) lives in a mounted volume, not the image. See `docs/DEPLOYMENT.md`. |
 | **SQLite** | Zero setup, single file, trivial backup (copy the file). Swap to PostgreSQL later only if it becomes multi-user. |
 | **EF Core Code-First + migrations** | Familiar, versioned schema, easy seeding. |
 | **QuestPDF** | Clean C# layout API, strong docs, actively maintained; good fit for structured business documents. |
@@ -142,10 +143,12 @@ normalization, bad-cell flagging, header detection below a title row).
 startup if missing; connection string built in `Program.cs`. Keeps the DB out of
 the source tree.
 
-## Login (M10)
+## Deployment (M10)
 
-The whole app is behind a single shared password so it can run on a
-shared/hosted server without exposing the catalogue.
+`Dockerfile` (multi-stage `dotnet publish` → `aspnet` runtime, non-root, port
+`8080`) + `docker-compose.yml` (app + **Caddy** for automatic HTTPS) +
+`Caddyfile` + `.env.example`. `docs/DEPLOYMENT.md` is the step-by-step for an
+Oracle Cloud free-tier Ubuntu VM.
 
 - **Auth** (`src/ExportDocGen/Auth/`): one shared password. `PasswordAuthenticator`
   checks a submission against `Auth__PasswordHash` (PBKDF2-SHA256, made by
@@ -160,10 +163,10 @@ shared/hosted server without exposing the catalogue.
 - **Login flow:** static-SSR `Login.razor` `<form>` → `POST /auth/login`
   (`SignInAsync` + local-only `returnUrl` redirect). `POST /auth/logout`
   (`.DisableAntiforgery()`) + a Sign-out button in the app bar.
-- **State:** the `DataDir` setting (default: OS local-app-data) holds the SQLite
-  file **and** the persisted Data Protection keys, so auth cookies survive a
-  restart. `UseForwardedHeaders` trusts an upstream reverse proxy's
-  `X-Forwarded-Proto` if one is added later.
+- **State:** `DataDir` config (default: OS local-app-data; container: `/data`)
+  holds the SQLite file **and** the persisted Data Protection keys, so auth
+  cookies survive a redeploy. `UseForwardedHeaders` trusts Caddy's
+  `X-Forwarded-Proto`.
 
 Local run is still just `dotnet run` (`appsettings.Development.json` carries the
 dev password `dev`).

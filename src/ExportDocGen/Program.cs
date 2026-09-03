@@ -53,7 +53,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddMudServices();
 
 // Data lives outside the source tree: the OS local-app-data folder for local runs,
-// or the DataDir setting (a writable path on the host) in production.
+// or the DataDir setting (a mounted volume) in the container.
 var dataDir = builder.Configuration["DataDir"]
     ?? Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -96,7 +96,7 @@ builder.Services.AddAuthorization(options =>
 });
 builder.Services.AddCascadingAuthenticationState();
 
-// If a TLS-terminating reverse proxy is put in front, trust its forwarded headers.
+// Behind Caddy (TLS terminator) in production — trust its forwarded headers.
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;

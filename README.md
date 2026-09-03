@@ -6,7 +6,7 @@ Excel/Word copy-paste.
 
 ## Status
 
-**M10 (login) complete.** Started 2026-08-31. Solution builds, runs,
+**M10 (login + deployment) complete.** Started 2026-08-31. Solution builds, runs,
 and has 54 passing tests. SQLite database, EF Core migrations, seed data,
 Customer/Product CRUD, the order builder, live calculations, Excel order import,
 the real ~16,600-row stock catalogue, and three export documents per order.
@@ -16,9 +16,9 @@ paper, customs-green, serif headings) and **Console** (dark: slate,
 filtration-teal, Inter) — following the OS light/dark setting.
 
 **M10:** the whole app is behind a **single shared password** (cookie auth), so
-it can run on a shared/hosted server without exposing the catalogue. In
-production set `Auth__PasswordHash` (see below). See `docs/DECISIONS.md`
-(2026-09-03).
+it can run on a public server without exposing the catalogue. `Dockerfile` +
+`docker-compose.yml` (app + Caddy for automatic HTTPS) ship it — see
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). See `docs/DECISIONS.md` (2026-09-03).
 
 The group's **two exporting companies** (Filtorq, İkiler Otomotiv) are modelled
 as `SellerCompany` rows. Each **customer** is assigned an exporter company; every
@@ -63,8 +63,9 @@ companies + 2 sample customers into a SQLite file at
 `~/.local/share/ExportDocGen/exportdocgen.db`. Delete that folder to reset.
 
 **Login:** locally the password is `dev` (from `appsettings.Development.json`).
-In production set the `Auth__PasswordHash` environment variable — generate the
-value with `dotnet run --project src/ExportDocGen -- hash-password`.
+In production set `Auth__PasswordHash` — generate it with
+`dotnet run --project src/ExportDocGen -- hash-password`. Deploying to a server:
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 The product catalogue is the real stock database. Export `stocks.ods` to `.xlsx`,
 then load it:
@@ -106,7 +107,8 @@ ExportDocGen/
 ├── .gitignore
 ├── ExportDocGen.slnx           # solution (new XML format)
 ├── dotnet-tools.json           # local tools (dotnet-ef)
-├── docs/
+├── Dockerfile · docker-compose.yml · Caddyfile · .env.example   # deployment (M10)
+├── docs/                       # incl. DEPLOYMENT.md
 ├── tests/
 │   └── ExportDocGen.Tests/     # xUnit; SQLite in-memory; service round-trip tests
 └── src/
