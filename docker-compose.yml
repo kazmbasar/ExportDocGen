@@ -6,28 +6,14 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       Auth__UserName: "${AUTH_USERNAME:-Team}"
-      Auth__PasswordHash: "${AUTH_PASSWORD_HASH:?set AUTH_PASSWORD_HASH in .env — run: docker compose run --rm --no-deps -e Auth__PasswordHash=x app hash-password 'your-password'}"
+      Auth__PasswordHash: "${AUTH_PASSWORD_HASH:?set AUTH_PASSWORD_HASH in .env — run: docker compose run --rm --no-deps app hash-password 'your-password'}"
     volumes:
       - app-data:/data
-    expose:
-      - "8080"
-
-  caddy:
-    image: caddy:2
-    restart: unless-stopped
+    # Loopback only: the app is reachable from host nginx, never from the
+    # internet. (Docker's own iptables rules bypass the host INPUT chain, so
+    # binding 0.0.0.0 here WOULD expose 8080 — keep the 127.0.0.1 prefix.)
     ports:
-      - "80:80"
-      - "443:443"
-    environment:
-      SITE_ADDRESS: "${SITE_ADDRESS:?set SITE_ADDRESS in .env (the public hostname, e.g. exportdocgen.example.com)}"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data
-      - caddy-config:/config
-    depends_on:
-      - app
+      - "127.0.0.1:8080:8080"
 
 volumes:
   app-data:
-  caddy-data:
-  caddy-config:

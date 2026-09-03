@@ -96,7 +96,8 @@ builder.Services.AddAuthorization(options =>
 });
 builder.Services.AddCascadingAuthenticationState();
 
-// Behind Caddy (TLS terminator) in production — trust its forwarded headers.
+// Behind nginx (TLS terminator) in production — trust its forwarded headers.
+// The container listens on loopback only, so nginx is the only possible peer.
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;

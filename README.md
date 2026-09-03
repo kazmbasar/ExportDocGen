@@ -17,8 +17,9 @@ filtration-teal, Inter) — following the OS light/dark setting.
 
 **M10:** the whole app is behind a **single shared password** (cookie auth), so
 it can run on a public server without exposing the catalogue. `Dockerfile` +
-`docker-compose.yml` (app + Caddy for automatic HTTPS) ship it — see
-[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). See `docs/DECISIONS.md` (2026-09-03).
+`docker-compose.yml` run it as a container; on the server, **nginx + certbot**
+reverse-proxy it over HTTPS — see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) and
+`docs/DECISIONS.md` (2026-09-03).
 
 The group's **two exporting companies** (Filtorq, İkiler Otomotiv) are modelled
 as `SellerCompany` rows. Each **customer** is assigned an exporter company; every
@@ -107,7 +108,8 @@ ExportDocGen/
 ├── .gitignore
 ├── ExportDocGen.slnx           # solution (new XML format)
 ├── dotnet-tools.json           # local tools (dotnet-ef)
-├── Dockerfile · docker-compose.yml · Caddyfile · .env.example   # deployment (M10)
+├── Dockerfile · docker-compose.yml · .env.example    # deployment (M10)
+├── deploy/nginx/               # reverse-proxy config for the server
 ├── docs/                       # incl. DEPLOYMENT.md
 ├── tests/
 │   └── ExportDocGen.Tests/     # xUnit; SQLite in-memory; service round-trip tests

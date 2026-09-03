@@ -6,6 +6,7 @@
 **/.git
 tests/
 docs/
+deploy/
 Progress/
 *.md
 .env

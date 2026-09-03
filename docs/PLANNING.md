@@ -175,11 +175,11 @@ Excel).
       + a "Sign out" button in the app bar. Data Protection keys persisted so
       logins survive a redeploy; `DataDir` setting moves the SQLite file +
       keys to a mounted volume; `UseForwardedHeaders` for running behind a
-      proxy. **Deployment:** `Dockerfile` + `docker-compose.yml` (app + Caddy
-      for automatic HTTPS) + `Caddyfile` + `.env.example`; `docs/DEPLOYMENT.md`
-      walks through an Oracle Cloud free-tier Ubuntu VM (both firewall layers,
-      Docker, DNS, `compose up`, backups). 54 tests. See `docs/DECISIONS.md`
-      (2026-09-03).
+      proxy. **Deployment:** `Dockerfile` + `docker-compose.yml` (single `app`
+      container on `127.0.0.1:8080`) + `deploy/nginx/` + `.env.example`;
+      `docs/DEPLOYMENT.md` walks through an Oracle Cloud Ubuntu VM — host
+      **nginx + certbot** in front, both firewall layers, Docker, DNS, backups.
+      54 tests. See `docs/DECISIONS.md` (2026-09-03).
 - [ ] **Stock import UX.** A browser `/products/import` page; real gross weights;
       price data.
 - [ ] Filtorq-specific commercial-invoice layout (if their real one differs).

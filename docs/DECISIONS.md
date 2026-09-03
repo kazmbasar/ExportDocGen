@@ -5,6 +5,38 @@ revisit.
 
 ---
 
+## 2026-09-03 — Reverse proxy: host nginx + certbot, not the Caddy container.
+
+Switched the deployment's TLS/reverse-proxy layer from a **Caddy container** (in
+`docker-compose.yml`) to **nginx installed on the VM**, with **certbot `--nginx`**
+for the Let's Encrypt certificate (obtain + auto-renew via a systemd timer).
+
+**Why:** nginx is what Kazim runs and knows; certbot's nginx plugin gives the
+same "set it and forget it" cert lifecycle Caddy had; and keeping the proxy on
+the host (not in Compose) means the app stack is a single container with nothing
+to coordinate.
+
+**Shape of it:**
+- `docker-compose.yml` is now just the `app` service, published to
+  **`127.0.0.1:8080`** — not reachable from the internet (important: Docker's
+  iptables rules bypass the host INPUT chain, so `0.0.0.0` would expose it).
+- `deploy/nginx/exportdocgen.conf` — the server block: `proxy_pass` to
+  `127.0.0.1:8080`, WebSocket upgrade headers for the Blazor circuit,
+  `client_max_body_size 32m` for the Excel imports, `X-Forwarded-*`. certbot
+  rewrites it in place to add `listen 443 ssl` + the redirect.
+- `deploy/nginx/upgrade.conf` — the `$connection_upgrade` map (http context).
+- `SITE_ADDRESS` is gone from `.env` / compose — the hostname lives in the nginx
+  config now.
+- Because the container is loopback-bound, "trust `X-Forwarded-*` from any peer"
+  (`KnownProxies`/`KnownIPNetworks` cleared) is safe — nginx is the only peer.
+
+`Caddyfile` deleted. `docs/DEPLOYMENT.md` rewritten as the nginx runbook.
+
+**Revisit if:** the deployment grows to more than one app instance or more
+services (→ a compose-managed proxy, or a real ingress, starts to pay off).
+
+---
+
 ## 2026-09-03 — Docker image built and verified; two Dockerfile fixes.
 
 The deployment files were briefly removed (a hosting-path detour) then reinstated
@@ -22,10 +54,10 @@ built and run. Two bugs surfaced that would only have shown up on the server:
   back.
 
 Verified locally with Docker: container boots + migrates + seeds; login gate and
-the five document endpoints require auth; `docker compose` with Caddy terminates
-TLS, redirects http→https, and the app emits `https://` URLs via
-`UseForwardedHeaders`; Data Protection keys + SQLite survive `docker restart`
-(logins persist).
+the five document endpoints require auth; a reverse proxy in front (Caddy at the
+time — see the entry above for the switch to nginx) terminates TLS, redirects
+http→https, and the app emits `https://` URLs via `UseForwardedHeaders`; Data
+Protection keys + SQLite survive `docker restart` (logins persist).
 
 ---
 

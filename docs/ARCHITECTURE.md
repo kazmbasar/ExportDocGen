@@ -21,7 +21,7 @@ Browser ──HTTP/SignalR──> Blazor Web App (Server interactivity)
 |--------|--------|
 | Blazor Web App, **global Server** interactivity (`@rendermode="InteractiveServer"` on `<HeadOutlet>` + `<Routes>` in `App.razor`) | Single language (C#) for UI + logic; no API layer; no WASM download; fine for a small-team tool. Global (not per-page) because every screen here is interactive. |
 | **Cookie auth, one shared password** (M10) | The tool now runs on a public server, so it needs a gate, but it's used by one or two people — a full identity store is overkill. `Auth__PasswordHash` (PBKDF2) is the whole credential. `login` is static SSR (cookies need an HTTP response); everything else is behind `[Authorize]` + an authz fallback policy. |
-| **Docker + Caddy** (M10) | One `docker compose up` on any Linux VM; Caddy does automatic HTTPS. State (SQLite + Data Protection keys) lives in a mounted volume, not the image. See `docs/DEPLOYMENT.md`. |
+| **Docker container + host nginx** (M10) | `docker compose up` runs the app bound to `127.0.0.1:8080`; **nginx** on the VM reverse-proxies it and **certbot** handles Let's Encrypt (obtain + auto-renew). State (SQLite + Data Protection keys) lives in the `app-data` volume, not the image. See `docs/DEPLOYMENT.md`. |
 | **SQLite** | Zero setup, single file, trivial backup (copy the file). Swap to PostgreSQL later only if it becomes multi-user. |
 | **EF Core Code-First + migrations** | Familiar, versioned schema, easy seeding. |
 | **QuestPDF** | Clean C# layout API, strong docs, actively maintained; good fit for structured business documents. |
@@ -146,9 +146,10 @@ the source tree.
 ## Deployment (M10)
 
 `Dockerfile` (multi-stage `dotnet publish` → `aspnet` runtime, non-root, port
-`8080`) + `docker-compose.yml` (app + **Caddy** for automatic HTTPS) +
-`Caddyfile` + `.env.example`. `docs/DEPLOYMENT.md` is the step-by-step for an
-Oracle Cloud free-tier Ubuntu VM.
+`8080`) + `docker-compose.yml` (single `app` service, published to
+`127.0.0.1:8080`) + `deploy/nginx/` (reverse-proxy config) + `.env.example`.
+`docs/DEPLOYMENT.md` is the step-by-step for an Oracle Cloud Ubuntu VM: nginx +
+certbot on the host, the app in Docker.
 
 - **Auth** (`src/ExportDocGen/Auth/`): one shared password. `PasswordAuthenticator`
   checks a submission against `Auth__PasswordHash` (PBKDF2-SHA256, made by
@@ -165,8 +166,9 @@ Oracle Cloud free-tier Ubuntu VM.
   (`.DisableAntiforgery()`) + a Sign-out button in the app bar.
 - **State:** `DataDir` config (default: OS local-app-data; container: `/data`)
   holds the SQLite file **and** the persisted Data Protection keys, so auth
-  cookies survive a redeploy. `UseForwardedHeaders` trusts Caddy's
-  `X-Forwarded-Proto`.
+  cookies survive a redeploy. `UseForwardedHeaders` trusts nginx's
+  `X-Forwarded-Proto` (the container listens on loopback only, so nginx is the
+  only possible peer).
 
 Local run is still just `dotnet run` (`appsettings.Development.json` carries the
 dev password `dev`).
